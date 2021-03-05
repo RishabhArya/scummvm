@@ -4,6 +4,7 @@ MODULE_OBJS = \
 	ags.o \
 	events.o \
 	game_scanner.o \
+	globals.o \
 	metaengine.o \
 	music.o \
 	lib/aastr-0.1.1/aarot.o \
@@ -11,7 +12,6 @@ MODULE_OBJS = \
 	lib/aastr-0.1.1/aautil.o \
 	lib/alfont/alfont.o \
 	lib/allegro.o \
-	lib/allegro/colblend.o \
 	lib/allegro/color.o \
 	lib/allegro/config.o \
 	lib/allegro/draw.o \
@@ -93,7 +93,6 @@ MODULE_OBJS = \
 	shared/util/textstreamwriter.o \
 	shared/util/version.o \
 	shared/util/wgt2allg.o \
-	engine/globals.o \
 	engine/ac/dynobj/cc_agsdynamicobject.o \
 	engine/ac/dynobj/cc_audiochannel.o \
 	engine/ac/dynobj/cc_audioclip.o \
@@ -286,7 +285,6 @@ MODULE_OBJS = \
 	engine/script/script_runtime.o \
 	engine/script/systemimports.o \
 	plugins/agsplugin.o \
-	plugins/global_plugin.o \
 	plugins/plugin_base.o \
 	plugins/pluginobjectreader.o \
 	plugins/ags_blend/ags_blend.o \
@@ -297,6 +295,7 @@ MODULE_OBJS = \
 	plugins/ags_flashlight/ags_flashlight.o \
 	plugins/ags_galaxy_steam/ags_blackwell_steam.o \
 	plugins/ags_galaxy_steam/ags_galaxy_steam.o \
+	plugins/ags_joy/ags_joy.o \
 	plugins/ags_pal_render/ags_pal_render.o \
 	plugins/ags_pal_render/raycast.o \
 	plugins/ags_parallax/ags_parallax.o \
@@ -309,7 +308,8 @@ MODULE_OBJS = \
 	plugins/ags_sprite_font/sprite_font_renderer.o \
 	plugins/ags_sprite_font/variable_width_font.o \
 	plugins/ags_sprite_font/variable_width_sprite_font.o \
-	plugins/ags_tcp_ip/ags_tcp_ip.o
+	plugins/ags_tcp_ip/ags_tcp_ip.o \
+	plugins/ags_wadjet_util/ags_wadjet_util.o
 
 ifdef ENABLE_AGS_TESTS
 MODULE_OBJS += \

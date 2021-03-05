@@ -26,9 +26,10 @@
  */
 
 #include "engines/icb/common/px_common.h"
-#include "engines/icb/common/px_maths.h"
 #include "engines/icb/softskin_pc.h"
 #include "engines/icb/common/px_capri_maths.h"
+
+#include "common/util.h"
 
 namespace ICB {
 
@@ -70,15 +71,15 @@ int softskinPC(rap_API *rap, int poseBone, MATRIXPC *lw, SVECTORPC *local, int16
 	int32 flag;
 	uint oldPrim = rap->nBones;
 
-	int xmin = *xminLocal;
-	int ymin = *yminLocal;
-	int zmin = *zminLocal;
+	int32 xmin = *xminLocal;
+	int32 ymin = *yminLocal;
+	int32 zmin = *zminLocal;
 
-	int xmax = *xmaxLocal;
-	int ymax = *ymaxLocal;
-	int zmax = *zmaxLocal;
+	int32 xmax = *xmaxLocal;
+	int32 ymax = *ymaxLocal;
+	int32 zmax = *zmaxLocal;
 
-	int lvx, lvy, lvz;
+	int32 lvx, lvy, lvz;
 
 	if (poseBone == -1) {
 		for (i = 0; i < nNone; i++) {
@@ -94,13 +95,13 @@ int softskinPC(rap_API *rap, int poseBone, MATRIXPC *lw, SVECTORPC *local, int16
 			lvy = plocal->vy;
 			lvz = plocal->vz;
 
-			xmin = PXmin(lvx, xmin);
-			ymin = PXmin(lvy, ymin);
-			zmin = PXmin(lvz, zmin);
+			xmin = MIN(lvx, xmin);
+			ymin = MIN(lvy, ymin);
+			zmin = MIN(lvz, zmin);
 
-			xmax = PXmax(lvx, xmax);
-			ymax = PXmax(lvy, ymax);
-			zmax = PXmax(lvz, zmax);
+			xmax = MAX(lvx, xmax);
+			ymax = MAX(lvy, ymax);
+			zmax = MAX(lvz, zmax);
 
 			noneLink++;
 		}
@@ -122,13 +123,13 @@ int softskinPC(rap_API *rap, int poseBone, MATRIXPC *lw, SVECTORPC *local, int16
 			lvy = plocal->vy;
 			lvz = plocal->vz;
 
-			xmin = PXmin(lvx, xmin);
-			ymin = PXmin(lvy, ymin);
-			zmin = PXmin(lvz, zmin);
+			xmin = MIN(lvx, xmin);
+			ymin = MIN(lvy, ymin);
+			zmin = MIN(lvz, zmin);
 
-			xmax = PXmax(lvx, xmax);
-			ymax = PXmax(lvy, ymax);
-			zmax = PXmax(lvz, zmax);
+			xmax = MAX(lvx, xmax);
+			ymax = MAX(lvy, ymax);
+			zmax = MAX(lvz, zmax);
 
 			noneLink++;
 		}
@@ -158,13 +159,13 @@ int softskinPC(rap_API *rap, int poseBone, MATRIXPC *lw, SVECTORPC *local, int16
 		lvy = plocal->vy;
 		lvz = plocal->vz;
 
-		xmin = PXmin(lvx, xmin);
-		ymin = PXmin(lvy, ymin);
-		zmin = PXmin(lvz, zmin);
+		xmin = MIN(lvx, xmin);
+		ymin = MIN(lvy, ymin);
+		zmin = MIN(lvz, zmin);
 
-		xmax = PXmax(lvx, xmax);
-		ymax = PXmax(lvy, ymax);
-		zmax = PXmax(lvz, zmax);
+		xmax = MAX(lvx, xmax);
+		ymax = MAX(lvy, ymax);
+		zmax = MAX(lvz, zmax);
 
 		singleLink++;
 	}
@@ -215,13 +216,13 @@ int softskinPC(rap_API *rap, int poseBone, MATRIXPC *lw, SVECTORPC *local, int16
 			lvy = plocal->vy;
 			lvz = plocal->vz;
 
-			xmin = PXmin(lvx, xmin);
-			ymin = PXmin(lvy, ymin);
-			zmin = PXmin(lvz, zmin);
+			xmin = MIN(lvx, xmin);
+			ymin = MIN(lvy, ymin);
+			zmin = MIN(lvz, zmin);
 
-			xmax = PXmax(lvx, xmax);
-			ymax = PXmax(lvy, ymax);
-			zmax = PXmax(lvz, zmax);
+			xmax = MAX(lvx, xmax);
+			ymax = MAX(lvy, ymax);
+			zmax = MAX(lvz, zmax);
 		}
 	}
 

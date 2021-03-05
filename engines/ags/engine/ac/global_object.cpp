@@ -44,6 +44,7 @@
 #include "ags/engine/gfx/graphicsdriver.h"
 #include "ags/shared/gfx/bitmap.h"
 #include "ags/shared/gfx/gfx_def.h"
+#include "ags/globals.h"
 
 namespace AGS3 {
 
@@ -53,13 +54,13 @@ using namespace AGS::Shared;
 
 extern RoomStatus *croom;
 extern RoomObject *objs;
-extern ViewStruct *views;
-extern GameSetupStruct game;
-extern ObjectCache objcache[MAX_ROOM_OBJECTS];
-extern RoomStruct thisroom;
+
+
+
+
 extern CharacterInfo *playerchar;
 extern int displayed_room;
-extern SpriteCache spriteset;
+
 extern int actSpsCount;
 extern Bitmap **actsps;
 extern IDriverDependantBitmap **actspsbmp;
@@ -70,7 +71,7 @@ int obj_lowest_yp;
 
 int GetObjectIDAtScreen(int scrx, int scry) {
 	// translate screen co-ordinates to room co-ordinates
-	VpPoint vpt = play.ScreenToRoomDivDown(scrx, scry);
+	VpPoint vpt = _GP(play).ScreenToRoomDivDown(scrx, scry);
 	if (vpt.second < 0)
 		return -1;
 	return GetObjectIDAtRoom(vpt.first.X, vpt.first.Y);
@@ -88,7 +89,7 @@ int GetObjectIDAtRoom(int roomx, int roomy) {
 		int spWidth = game_to_data_coord(objs[aa].get_width());
 		int spHeight = game_to_data_coord(objs[aa].get_height());
 		if (objs[aa].view >= 0)
-			isflipped = views[objs[aa].view].loops[objs[aa].loop].frames[objs[aa].frame].flags & VFLG_FLIPSPRITE;
+			isflipped = _G(views)[objs[aa].view].loops[objs[aa].loop].frames[objs[aa].frame].flags & VFLG_FLIPSPRITE;
 
 		Bitmap *theImage = GetObjectImage(aa, &isflipped);
 
@@ -142,43 +143,43 @@ void RemoveObjectTint(int obj) {
 void SetObjectView(int obn, int vii) {
 	if (!is_valid_object(obn)) quit("!SetObjectView: invalid object number specified");
 	debug_script_log("Object %d set to view %d", obn, vii);
-	if ((vii < 1) || (vii > game.numviews)) {
-		quitprintf("!SetObjectView: invalid view number (You said %d, max is %d)", vii, game.numviews);
+	if ((vii < 1) || (vii > _GP(game).numviews)) {
+		quitprintf("!SetObjectView: invalid view number (You said %d, max is %d)", vii, _GP(game).numviews);
 	}
 	vii--;
 
 	objs[obn].view = vii;
 	objs[obn].frame = 0;
-	if (objs[obn].loop >= views[vii].numLoops)
+	if (objs[obn].loop >= _G(views)[vii].numLoops)
 		objs[obn].loop = 0;
 	objs[obn].cycling = 0;
-	objs[obn].num = views[vii].loops[0].frames[0].pic;
+	objs[obn].num = _G(views)[vii].loops[0].frames[0].pic;
 }
 
 void SetObjectFrame(int obn, int viw, int lop, int fra) {
 	if (!is_valid_object(obn)) quit("!SetObjectFrame: invalid object number specified");
 	viw--;
-	if (viw < 0 || viw >= game.numviews) quitprintf("!SetObjectFrame: invalid view number used (%d, range is 0 - %d)", viw, game.numviews - 1);
-	if (lop < 0 || lop >= views[viw].numLoops) quitprintf("!SetObjectFrame: invalid loop number used (%d, range is 0 - %d)", lop, views[viw].numLoops - 1);
+	if (viw < 0 || viw >= _GP(game).numviews) quitprintf("!SetObjectFrame: invalid view number used (%d, range is 0 - %d)", viw, _GP(game).numviews - 1);
+	if (lop < 0 || lop >= _G(views)[viw].numLoops) quitprintf("!SetObjectFrame: invalid loop number used (%d, range is 0 - %d)", lop, _G(views)[viw].numLoops - 1);
 	// AGS < 3.5.1 let user to pass literally any positive invalid frame value by silently reassigning it to zero...
 	if (loaded_game_file_version < kGameVersion_351) {
-		if (fra >= views[viw].loops[lop].numFrames) {
-			debug_script_warn("SetObjectFrame: frame index out of range (%d, must be 0 - %d), set to 0", fra, views[viw].loops[lop].numFrames - 1);
+		if (fra >= _G(views)[viw].loops[lop].numFrames) {
+			debug_script_warn("SetObjectFrame: frame index out of range (%d, must be 0 - %d), set to 0", fra, _G(views)[viw].loops[lop].numFrames - 1);
 			fra = 0;
 		}
 	}
-	if (fra < 0 || fra >= views[viw].loops[lop].numFrames) quitprintf("!SetObjectFrame: invalid frame number used (%d, range is 0 - %d)", fra, views[viw].loops[lop].numFrames - 1);
+	if (fra < 0 || fra >= _G(views)[viw].loops[lop].numFrames) quitprintf("!SetObjectFrame: invalid frame number used (%d, range is 0 - %d)", fra, _G(views)[viw].loops[lop].numFrames - 1);
 	// AGS >= 3.2.0 do not let assign an empty loop
 	// NOTE: pre-3.2.0 games are converting views from ViewStruct272 struct, always has at least 1 frame
 	if (loaded_game_file_version >= kGameVersion_320) {
-		if (views[viw].loops[lop].numFrames == 0)
+		if (_G(views)[viw].loops[lop].numFrames == 0)
 			quit("!SetObjectFrame: specified loop has no frames");
 	}
 	objs[obn].view = viw;
 	objs[obn].loop = lop;
 	objs[obn].frame = fra;
 	objs[obn].cycling = 0;
-	objs[obn].num = views[viw].loops[lop].frames[fra].pic;
+	objs[obn].num = _G(views)[viw].loops[lop].frames[fra].pic;
 	CheckViewFrame(viw, objs[obn].loop, objs[obn].frame);
 }
 
@@ -196,7 +197,7 @@ void SetObjectBaseline(int obn, int basel) {
 	if (!is_valid_object(obn)) quit("!SetObjectBaseline: invalid object number specified");
 	// baseline has changed, invalidate the cache
 	if (objs[obn].baseline != basel) {
-		objcache[obn].ywas = -9999;
+		_G(objcache)[obn].ywas = -9999;
 		objs[obn].baseline = basel;
 	}
 }
@@ -219,15 +220,15 @@ void AnimateObjectImpl(int obn, int loopn, int spdd, int rept, int direction, in
 		quit("!AnimateObject: invalid object number specified");
 	if (objs[obn].view < 0)
 		quit("!AnimateObject: object has not been assigned a view");
-	if (loopn < 0 || loopn >= views[objs[obn].view].numLoops)
+	if (loopn < 0 || loopn >= _G(views)[objs[obn].view].numLoops)
 		quit("!AnimateObject: invalid loop number specified");
-	if (sframe < 0 || sframe >= views[objs[obn].view].loops[loopn].numFrames)
+	if (sframe < 0 || sframe >= _G(views)[objs[obn].view].loops[loopn].numFrames)
 		quit("!AnimateObject: invalid starting frame number specified");
 	if ((direction < 0) || (direction > 1))
 		quit("!AnimateObjectEx: invalid direction");
 	if ((rept < 0) || (rept > 2))
 		quit("!AnimateObjectEx: invalid repeat value");
-	if (views[objs[obn].view].loops[loopn].numFrames < 1)
+	if (_G(views)[objs[obn].view].loops[loopn].numFrames < 1)
 		quit("!AnimateObject: no frames in the specified view loop");
 
 	debug_script_log("Obj %d start anim view %d loop %d, speed %d, repeat %d, frame %d", obn, objs[obn].view + 1, loopn, spdd, rept, sframe);
@@ -238,13 +239,13 @@ void AnimateObjectImpl(int obn, int loopn, int spdd, int rept, int direction, in
 	if (direction) {
 		sframe--;
 		if (sframe < 0)
-			sframe = views[objs[obn].view].loops[loopn].numFrames - (-sframe);
+			sframe = _G(views)[objs[obn].view].loops[loopn].numFrames - (-sframe);
 	}
 	objs[obn].frame = sframe;
 
 	objs[obn].overall_speed = spdd;
-	objs[obn].wait = spdd + views[objs[obn].view].loops[loopn].frames[objs[obn].frame].speed;
-	objs[obn].num = views[objs[obn].view].loops[loopn].frames[objs[obn].frame].pic;
+	objs[obn].wait = spdd + _G(views)[objs[obn].view].loops[loopn].frames[objs[obn].frame].speed;
+	objs[obn].num = _G(views)[objs[obn].view].loops[loopn].frames[objs[obn].frame].pic;
 	CheckViewFrame(objs[obn].view, loopn, objs[obn].frame);
 
 	if (blocking)
@@ -266,15 +267,15 @@ void MergeObject(int obn) {
 	construct_object_gfx(obn, nullptr, &theHeight, true);
 
 	//Bitmap *oldabuf = graphics->bmp;
-	//abuf = thisroom.BgFrames.Graphic[play.bg_frame];
-	PBitmap bg_frame = thisroom.BgFrames[play.bg_frame].Graphic;
+	//abuf = _GP(thisroom).BgFrames.Graphic[_GP(play).bg_frame];
+	PBitmap bg_frame = _GP(thisroom).BgFrames[_GP(play).bg_frame].Graphic;
 	if (bg_frame->GetColorDepth() != actsps[obn]->GetColorDepth())
 		quit("!MergeObject: unable to merge object due to color depth differences");
 
 	int xpos = data_to_game_coord(objs[obn].x);
 	int ypos = (data_to_game_coord(objs[obn].y) - theHeight);
 
-	draw_sprite_support_alpha(bg_frame.get(), false, xpos, ypos, actsps[obn], (game.SpriteInfos[objs[obn].num].Flags & SPF_ALPHACHANNEL) != 0);
+	draw_sprite_support_alpha(bg_frame.get(), false, xpos, ypos, actsps[obn], (_GP(game).SpriteInfos[objs[obn].num].Flags & SPF_ALPHACHANNEL) != 0);
 	invalidate_screen();
 	mark_current_background_dirty();
 
@@ -371,7 +372,7 @@ void GetObjectName(int obj, char *buffer) {
 	if (!is_valid_object(obj))
 		quit("!GetObjectName: invalid object number");
 
-	strcpy(buffer, get_translation(thisroom.Objects[obj].Name));
+	strcpy(buffer, get_translation(_GP(thisroom).Objects[obj].Name));
 }
 
 void MoveObject(int objj, int xx, int yy, int spp) {
@@ -392,13 +393,13 @@ void SetObjectClickable(int cha, int clik) {
 void SetObjectIgnoreWalkbehinds(int cha, int clik) {
 	if (!is_valid_object(cha))
 		quit("!SetObjectIgnoreWalkbehinds: Invalid object specified");
-	if (game.options[OPT_BASESCRIPTAPI] >= kScriptAPI_v350)
+	if (_GP(game).options[OPT_BASESCRIPTAPI] >= kScriptAPI_v350)
 		debug_script_warn("IgnoreWalkbehinds is not recommended for use, consider other solutions");
 	objs[cha].flags &= ~OBJF_NOWALKBEHINDS;
 	if (clik)
 		objs[cha].flags |= OBJF_NOWALKBEHINDS;
 	// clear the cache
-	objcache[cha].ywas = -9999;
+	_G(objcache)[cha].ywas = -9999;
 }
 
 void RunObjectInteraction(int aa, int mood) {
@@ -414,17 +415,17 @@ void RunObjectInteraction(int aa, int mood) {
 	else if (mood == MODE_USE) {
 		passon = 3;
 		cdata = playerchar->activeinv;
-		play.usedinv = cdata;
+		_GP(play).usedinv = cdata;
 	}
 	evblockbasename = "object%d";
 	evblocknum = aa;
 
-	if (thisroom.Objects[aa].EventHandlers != nullptr) {
+	if (_GP(thisroom).Objects[aa].EventHandlers != nullptr) {
 		if (passon >= 0) {
-			if (run_interaction_script(thisroom.Objects[aa].EventHandlers.get(), passon, 4, (passon == 3)))
+			if (run_interaction_script(_GP(thisroom).Objects[aa].EventHandlers.get(), passon, 4, (passon == 3)))
 				return;
 		}
-		run_interaction_script(thisroom.Objects[aa].EventHandlers.get(), 4);  // any click on obj
+		run_interaction_script(_GP(thisroom).Objects[aa].EventHandlers.get(), 4);  // any click on obj
 	} else {
 		if (passon >= 0) {
 			if (run_interaction_event(&croom->intrObject[aa], passon, 4, (passon == 3)))
@@ -443,14 +444,14 @@ int AreObjectsColliding(int obj1, int obj2) {
 
 int GetThingRect(int thing, _Rect *rect) {
 	if (is_valid_character(thing)) {
-		if (game.chars[thing].room != displayed_room)
+		if (_GP(game).chars[thing].room != displayed_room)
 			return 0;
 
 		int charwid = game_to_data_coord(GetCharacterWidth(thing));
-		rect->x1 = game.chars[thing].x - (charwid / 2);
+		rect->x1 = _GP(game).chars[thing].x - (charwid / 2);
 		rect->x2 = rect->x1 + charwid;
-		rect->y1 = game.chars[thing].get_effective_y() - game_to_data_coord(GetCharacterHeight(thing));
-		rect->y2 = game.chars[thing].get_effective_y();
+		rect->y1 = _GP(game).chars[thing].get_effective_y() - game_to_data_coord(GetCharacterHeight(thing));
+		rect->y2 = _GP(game).chars[thing].get_effective_y();
 	} else if (is_valid_object(thing - OVERLAPPING_OBJECT)) {
 		int objid = thing - OVERLAPPING_OBJECT;
 		if (objs[objid].on != 1)
@@ -498,11 +499,11 @@ int AreThingsOverlapping(int thing1, int thing2) {
 int GetObjectProperty(int hss, const char *property) {
 	if (!is_valid_object(hss))
 		quit("!GetObjectProperty: invalid object");
-	return get_int_property(thisroom.Objects[hss].Properties, croom->objProps[hss], property);
+	return get_int_property(_GP(thisroom).Objects[hss].Properties, croom->objProps[hss], property);
 }
 
 void GetObjectPropertyText(int item, const char *property, char *bufer) {
-	get_text_property(thisroom.Objects[item].Properties, croom->objProps[item], property, bufer);
+	get_text_property(_GP(thisroom).Objects[item].Properties, croom->objProps[item], property, bufer);
 }
 
 Bitmap *GetObjectImage(int obj, int *isFlipped) {
@@ -515,7 +516,7 @@ Bitmap *GetObjectImage(int obj, int *isFlipped) {
 			return actsps[obj];
 		}
 	}
-	return spriteset[objs[obj].num];
+	return _GP(spriteset)[objs[obj].num];
 }
 
 } // namespace AGS3

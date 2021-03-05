@@ -20,21 +20,20 @@
  *
  */
 
-//include <string.h>
 #include "ags/engine/ac/label.h"
 #include "ags/shared/ac/common.h"
 #include "ags/shared/ac/gamesetupstruct.h"
 #include "ags/engine/ac/global_translation.h"
 #include "ags/engine/ac/string.h"
-
 #include "ags/shared/debugging/out.h"
 #include "ags/engine/script/script_api.h"
 #include "ags/engine/script/script_runtime.h"
 #include "ags/engine/ac/dynobj/scriptstring.h"
+#include "ags/globals.h"
 
 namespace AGS3 {
 
-extern GameSetupStruct game;
+
 
 // ** LABEL FUNCTIONS
 
@@ -82,7 +81,7 @@ int Label_GetFont(GUILabel *labl) {
 }
 
 void Label_SetFont(GUILabel *guil, int fontnum) {
-	if ((fontnum < 0) || (fontnum >= game.numfonts))
+	if ((fontnum < 0) || (fontnum >= _GP(game).numfonts))
 		quit("!SetLabelFont: invalid font number.");
 
 	if (fontnum != guil->Font) {
@@ -97,7 +96,7 @@ void Label_SetFont(GUILabel *guil, int fontnum) {
 //
 //=============================================================================
 
-extern ScriptString myScriptStringImpl;
+
 
 // void (GUILabel *labl, char *buffer)
 RuntimeScriptValue Sc_Label_GetText(void *self, const RuntimeScriptValue *params, int32_t param_count) {
@@ -130,7 +129,7 @@ RuntimeScriptValue Sc_Label_SetFont(void *self, const RuntimeScriptValue *params
 
 // const char* (GUILabel *labl)
 RuntimeScriptValue Sc_Label_GetText_New(void *self, const RuntimeScriptValue *params, int32_t param_count) {
-	API_CONST_OBJCALL_OBJ(GUILabel, const char, myScriptStringImpl, Label_GetText_New);
+	API_CONST_OBJCALL_OBJ(GUILabel, const char, _GP(myScriptStringImpl), Label_GetText_New);
 }
 
 // int (GUILabel *labl)

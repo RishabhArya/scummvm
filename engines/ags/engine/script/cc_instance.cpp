@@ -43,7 +43,7 @@
 #include "ags/engine/ac/dynobj/cc_dynamicobject_addr_and_manager.h"
 #include "ags/shared/util/memory.h"
 #include "ags/shared/util/string_utils.h" // linux strnicmp definition
-#include "ags/engine/globals.h"
+#include "ags/globals.h"
 
 namespace AGS3 {
 
@@ -52,11 +52,11 @@ using namespace AGS::Shared::Memory;
 
 extern ccInstance *loadedInstances[MAX_LOADED_INSTANCES]; // in script/script_runtime
 extern int gameHasBeenRestored; // in ac/game
-extern ExecutingScript *curscript; // in script/script
+ // in script/script
 extern int maxWhileLoops;
 extern new_line_hook_type new_line_hook;
 
-extern ScriptString myScriptStringImpl;
+
 
 enum ScriptOpArgIsReg {
 	kScOpNoArgIsReg     = 0,
@@ -361,7 +361,7 @@ int ccInstance::CallScriptFunction(const char *funcname, int32_t numargs, const 
 	// to be reconsidered, since the GC could be run in the middle
 	// of a RET from a function or something where there is an
 	// object with ref count 0 that is in use
-	pool.RunGarbageCollectionIfAppropriate();
+	_GP(pool).RunGarbageCollectionIfAppropriate();
 
 	if (new_line_hook)
 		new_line_hook(nullptr, 0);
@@ -899,9 +899,9 @@ int ccInstance::Run(int32_t curpc) {
 			// Note: we might be freeing a dynamic array which contains the DisableDispose
 			// object, that will be handled inside the recursive call to SubRef.
 			// CHECKME!! what type of data may reg1 point to?
-			pool.disableDisposeForObject = (const char *)registers[SREG_AX].Ptr;
+			_GP(pool).disableDisposeForObject = (const char *)registers[SREG_AX].Ptr;
 			ccReleaseObjectReference(handle);
-			pool.disableDisposeForObject = nullptr;
+			_GP(pool).disableDisposeForObject = nullptr;
 			registers[SREG_MAR].WriteInt32(0);
 			break;
 		}
@@ -1177,7 +1177,7 @@ int ccInstance::Run(int32_t curpc) {
 			direct_ptr1 = (const char *)reg1.GetDirectPtr();
 			reg1.SetDynamicObject(
 			    stringClassImpl->CreateString(direct_ptr1).second,
-			    &myScriptStringImpl);
+			    &_GP(myScriptStringImpl));
 			break;
 		case SCMD_STRINGSEQUAL:
 			if ((reg1.IsNull()) || (reg2.IsNull())) {

@@ -72,7 +72,7 @@ void AGSParallax::AGS_EngineStartup(IAGSEngine *engine) {
 	_engine->RequestEventHook(AGSE_RESTOREGAME);
 }
 
-NumberPtr AGSParallax::AGS_EngineOnEvent(int event, NumberPtr data) {
+int64 AGSParallax::AGS_EngineOnEvent(int event, NumberPtr data) {
 	if (event == AGSE_PREGUIDRAW) {
 		Draw(true);
 	} else if (event == AGSE_PRESCREENDRAW) {
@@ -147,7 +147,8 @@ void AGSParallax::Draw(bool foreground) {
 	}
 }
 
-void AGSParallax::pxDrawSprite(int id, int x, int y, int slot, int speed) {
+void AGSParallax::pxDrawSprite(ScriptMethodParams &params) {
+	PARAMS5(int, id, int, x, int, y, int, slot, int, speed);
 #ifdef DEBUG
 	char buffer[200];
 	sprintf(buffer, "%s %d %d %d %d %d\n", "pxDrawSprite", id, x, y, slot, speed);
@@ -171,7 +172,8 @@ void AGSParallax::pxDrawSprite(int id, int x, int y, int slot, int speed) {
 }
 
 
-void AGSParallax::pxDeleteSprite(int id) {
+void AGSParallax::pxDeleteSprite(ScriptMethodParams &params) {
+	PARAMS1(int, id);
 #ifdef DEBUG
 	char buffer[200];
 	sprintf(buffer, "%s %d\n", "pxDeleteSprite", id);

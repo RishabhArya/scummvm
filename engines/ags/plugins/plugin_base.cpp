@@ -28,10 +28,12 @@
 #include "ags/plugins/ags_flashlight/ags_flashlight.h"
 #include "ags/plugins/ags_galaxy_steam/ags_blackwell_steam.h"
 #include "ags/plugins/ags_galaxy_steam/ags_galaxy_steam.h"
+#include "ags/plugins/ags_joy/ags_joy.h"
 #include "ags/plugins/ags_pal_render/ags_pal_render.h"
 #include "ags/plugins/ags_snow_rain/ags_snow_rain.h"
 #include "ags/plugins/ags_sprite_font/ags_sprite_font.h"
 #include "ags/plugins/ags_tcp_ip/ags_tcp_ip.h"
+#include "ags/plugins/ags_wadjet_util/ags_wadjet_util.h"
 #include "ags/ags.h"
 #include "ags/detection.h"
 #include "common/str.h"
@@ -67,6 +69,9 @@ void *pluginOpen(const char *filename) {
 	if (fname.equalsIgnoreCase("AGSFlashlight"))
 		return new AGSFlashlight::AGSFlashlight();
 
+	if (fname.equalsIgnoreCase("AGSJoy"))
+		return new AGSJoy::AGSJoy();
+
 	if (fname.equalsIgnoreCase("AGSPalRender"))
 		return new AGSPalRender::AGSPalRender();
 
@@ -86,6 +91,9 @@ void *pluginOpen(const char *filename) {
 	if (fname.equalsIgnoreCase("agsteam") || fname.equalsIgnoreCase("agsteam-unified") ||
 			fname.equalsIgnoreCase("agsteam-disjoint"))
 		return new AGSGalaxySteam::AGSSteam();
+
+	if (fname.equalsIgnoreCase("AGSWadgetUtil"))
+		return new AGSWadgetUtil::AGSWadgetUtil();
 
 	return nullptr;
 }
@@ -144,7 +152,7 @@ void PluginBase::AGS_EngineStartup(IAGSEngine *) {
 void PluginBase::AGS_EngineShutdown() {
 }
 
-NumberPtr PluginBase::AGS_EngineOnEvent(int, NumberPtr) {
+int64 PluginBase::AGS_EngineOnEvent(int, NumberPtr) {
 	return 0;
 }
 

@@ -46,7 +46,7 @@
 #include "ags/shared/core/assetmanager.h"
 #include "ags/plugins/plugin_engine.h"
 #include "ags/engine/media/audio/audio_system.h"
-#include "ags/engine/globals.h"
+#include "ags/globals.h"
 #include "ags/ags.h"
 
 namespace AGS3 {
@@ -54,10 +54,10 @@ namespace AGS3 {
 using namespace AGS::Shared;
 using namespace AGS::Engine;
 
-extern GameSetupStruct game;
-extern SpriteCache spriteset;
-extern RoomStruct thisroom;
-extern RoomStatus troom;    // used for non-saveable rooms, eg. intro
+
+
+
+    // used for non-saveable rooms, eg. intro
 extern int our_eip;
 extern GameSetup usetup;
 extern char pexbuf[STD_BUFFER_SIZE];
@@ -91,11 +91,11 @@ void quit_shutdown_scripts() {
 
 void quit_check_dynamic_sprites(QuitReason qreason) {
 	if ((qreason & kQuitKind_NormalExit) && (check_dynamic_sprites_at_exit) &&
-		(game.options[OPT_DEBUGMODE] != 0)) {
+		(_GP(game).options[OPT_DEBUGMODE] != 0)) {
 		// game exiting normally -- make sure the dynamic sprites
 		// have been deleted
-		for (int i = 1; i < spriteset.GetSpriteSlotCount(); i++) {
-			if (game.SpriteInfos[i].Flags & SPF_DYNAMICALLOC)
+		for (int i = 1; i < _GP(spriteset).GetSpriteSlotCount(); i++) {
+			if (_GP(game).SpriteInfos[i].Flags & SPF_DYNAMICALLOC)
 				debug_script_warn("Dynamic sprite %d was never deleted", i);
 		}
 	}
@@ -120,7 +120,7 @@ void quit_shutdown_platform(QuitReason qreason) {
 
 void quit_shutdown_audio() {
 	our_eip = 9917;
-	game.options[OPT_CROSSFADEMUSIC] = 0;
+	_GP(game).options[OPT_CROSSFADEMUSIC] = 0;
 	shutdown_sound();
 }
 
@@ -179,8 +179,8 @@ void quit_message_on_exit(const char *qmsg, String &alertis, QuitReason qreason)
 
 void quit_release_data() {
 	resetRoomStatuses();
-	thisroom.Free();
-	play.Free();
+	_GP(thisroom).Free();
+	_GP(play).Free();
 
 	/*  _CrtMemState memstart;
 	_CrtMemCheckpoint(&memstart);
@@ -217,7 +217,8 @@ void allegro_bitmap_test_release() {
 // "!|" is a special code used to mean that the player has aborted (Alt+X)
 void quit(const char *quitmsg) {
 	if (!_G(abort_engine)) {
-		strncpy(_G(quit_message), quitmsg, 256);
+		strncpy(_G(quit_message), quitmsg, sizeof(_G(quit_message)) - 1);
+		_G(quit_message)[sizeof(_G(quit_message)) - 1] = '\0';
 		_G(abort_engine) = true;
 	}
 }
@@ -258,7 +259,7 @@ void quit_free() {
 	shutdown_font_renderer();
 	our_eip = 9902;
 
-	spriteset.Reset();
+	_GP(spriteset).Reset();
 
 	our_eip = 9907;
 

@@ -35,7 +35,6 @@
 #include "ags/engine/ac/gamesetup.h"
 #include "ags/shared/ac/gamesetupstruct.h"
 #include "ags/engine/ac/global_audio.h"
-#include "ags/engine/ac/global_plugin.h"
 #include "ags/engine/ac/global_walkablearea.h"
 #include "ags/engine/ac/keycode.h"
 #include "ags/engine/ac/mouse.h"
@@ -56,7 +55,6 @@
 #include "ags/engine/main/engine.h"
 #include "ags/plugins/agsplugin.h"
 #include "ags/plugins/plugin_engine.h"
-#include "ags/plugins/plugin_builtin.h"
 #include "ags/plugins/pluginobjectreader.h"
 #include "ags/engine/script/script.h"
 #include "ags/engine/script/script_runtime.h"
@@ -73,7 +71,7 @@
 #include "ags/shared/util/memory.h"
 #include "ags/shared/util/filestream.h"
 #include "ags/engine/media/audio/audio_system.h"
-#include "ags/engine/globals.h"
+#include "ags/globals.h"
 #include "ags/engine/util/library.h"
 #include "ags/engine/util/library_scummvm.h"
 #include "ags/ags.h"
@@ -88,28 +86,21 @@ using namespace AGS::Engine;
 
 extern IGraphicsDriver *gfxDriver;
 extern int displayed_room;
-extern RoomStruct thisroom;
-extern GameSetupStruct game;
 extern RoomStatus *croom;
-extern SpriteCache spriteset;
-extern ViewStruct *views;
+
 extern int game_paused;
 extern GameSetup usetup;
-extern int inside_script;
-extern ccInstance *gameinst, *roominst;
-extern CharacterCache *charcache;
-extern ObjectCache objcache[MAX_ROOM_OBJECTS];
-extern MoveList *mls;
 extern color palette[256];
 extern PluginObjectReader pluginReaders[MAX_PLUGIN_OBJECT_READERS];
 extern int numPluginReaders;
 extern RuntimeScriptValue GlobalReturnValue;
-extern ScriptString myScriptStringImpl;
+extern int pluginSimulatedClick;
+
+void PluginSimulateMouseClick(int pluginButtonID) {
+	pluginSimulatedClick = pluginButtonID - 1;
+}
 
 // **************** PLUGIN IMPLEMENTATION ****************
-
-
-
 
 struct EnginePlugin {
 	char        filename[PLUGIN_FILENAME_MAX + 1];
@@ -143,8 +134,6 @@ struct EnginePlugin {
 EnginePlugin plugins[MAXPLUGINS];
 int numPlugins = 0;
 int pluginsWantingDebugHooks = 0;
-
-std::vector<InbuiltPluginDetails> _registered_builtin_plugins;
 
 void IAGSEngine::AbortGame(const char *reason) {
 	quit((const char *)reason);
@@ -251,11 +240,11 @@ void IAGSEngine::DrawText(int32 x, int32 y, int32 font, int32 color, const char 
 
 void IAGSEngine::GetScreenDimensions(int32 *width, int32 *height, int32 *coldepth) {
 	if (width != nullptr)
-		width[0] = play.GetMainViewport().GetWidth();
+		width[0] = _GP(play).GetMainViewport().GetWidth();
 	if (height != nullptr)
-		height[0] = play.GetMainViewport().GetHeight();
+		height[0] = _GP(play).GetMainViewport().GetHeight();
 	if (coldepth != nullptr)
-		coldepth[0] = scsystem.coldepth;
+		coldepth[0] = _GP(scsystem).coldepth;
 }
 
 unsigned char **IAGSEngine::GetRawBitmapSurface(BITMAP *bmp) {
@@ -290,13 +279,13 @@ int IAGSEngine::GetCurrentRoom() {
 	return displayed_room;
 }
 int IAGSEngine::GetNumBackgrounds() {
-	return thisroom.BgFrameCount;
+	return _GP(thisroom).BgFrameCount;
 }
 int IAGSEngine::GetCurrentBackground() {
-	return play.bg_frame;
+	return _GP(play).bg_frame;
 }
 BITMAP *IAGSEngine::GetBackgroundScene(int32 index) {
-	return (BITMAP *)thisroom.BgFrames[index].Graphic->GetAllegroBitmap();
+	return (BITMAP *)_GP(thisroom).BgFrames[index].Graphic->GetAllegroBitmap();
 }
 void IAGSEngine::GetBitmapDimensions(BITMAP *bmp, int32 *width, int32 *height, int32 *coldepth) {
 	if (bmp == nullptr)
@@ -350,7 +339,7 @@ void IAGSEngine::DrawTextWrapped(int32 xx, int32 yy, int32 wid, int32 font, int3
 	// TODO: use generic function from the engine instead of having copy&pasted code here
 	int linespacing = getfontspacing_outlined(font);
 
-	if (break_up_text_into_lines(text, Lines, wid, font) == 0)
+	if (break_up_text_into_lines(text, _GP(fontLines), wid, font) == 0)
 		return;
 
 	Bitmap *ds = gfxDriver->GetStageBackBuffer();
@@ -358,8 +347,8 @@ void IAGSEngine::DrawTextWrapped(int32 xx, int32 yy, int32 wid, int32 font, int3
 		return;
 	color_t text_color = ds->GetCompatibleColor(color);
 	data_to_game_coords((int *)&xx, (int *)&yy); // stupid! quick tweak
-	for (size_t i = 0; i < Lines.Count(); i++)
-		draw_and_invalidate_text(ds, xx, yy + linespacing * i, font, text_color, Lines[i]);
+	for (size_t i = 0; i < _GP(fontLines).Count(); i++)
+		draw_and_invalidate_text(ds, xx, yy + linespacing * i, font, text_color, _GP(fontLines)[i]);
 }
 
 Bitmap glVirtualScreenWrap;
@@ -416,22 +405,22 @@ void IAGSEngine::PollSystem() {
 	domouse(DOMOUSE_NOCURSOR);
 	update_polled_stuff_if_runtime();
 	int mbut, mwheelz;
-	if (run_service_mb_controls(mbut, mwheelz) && mbut >= 0 && !play.IsIgnoringInput())
+	if (run_service_mb_controls(mbut, mwheelz) && mbut >= 0 && !_GP(play).IsIgnoringInput())
 		pl_run_plugin_hooks(AGSE_MOUSECLICK, mbut);
 	int kp;
-	if (run_service_key_controls(kp) && !play.IsIgnoringInput()) {
+	if (run_service_key_controls(kp) && !_GP(play).IsIgnoringInput()) {
 		pl_run_plugin_hooks(AGSE_KEYPRESS, kp);
 	}
 
 }
 AGSCharacter *IAGSEngine::GetCharacter(int32 charnum) {
-	if (charnum >= game.numcharacters)
+	if (charnum >= _GP(game).numcharacters)
 		quit("!AGSEngine::GetCharacter: invalid character request");
 
-	return (AGSCharacter *)&game.chars[charnum];
+	return (AGSCharacter *)&_GP(game).chars[charnum];
 }
 AGSGameOptions *IAGSEngine::GetGameOptions() {
-	return (AGSGameOptions *)&play;
+	return (AGSGameOptions *)&_GP(play);
 }
 AGSColor *IAGSEngine::GetPalette() {
 	return (AGSColor *)&palette[0];
@@ -440,13 +429,13 @@ void IAGSEngine::SetPalette(int32 start, int32 finish, AGSColor *cpl) {
 	set_palette_range((color *)cpl, start, finish, 0);
 }
 int IAGSEngine::GetNumCharacters() {
-	return game.numcharacters;
+	return _GP(game).numcharacters;
 }
 int IAGSEngine::GetPlayerCharacter() {
-	return game.playercharacter;
+	return _GP(game).playercharacter;
 }
 void IAGSEngine::RoomToViewport(int32 *x, int32 *y) {
-	Point scrp = play.RoomToScreen(x ? data_to_game_coord(*x) : 0, y ? data_to_game_coord(*y) : 0);
+	Point scrp = _GP(play).RoomToScreen(x ? data_to_game_coord(*x) : 0, y ? data_to_game_coord(*y) : 0);
 	if (x)
 		*x = scrp.X;
 	if (y)
@@ -456,7 +445,7 @@ void IAGSEngine::ViewportToRoom(int32 *x, int32 *y) {
 	// NOTE: This is an old function that did not account for custom/multiple viewports
 	// and does not expect to fail, therefore we always use primary viewport here.
 	// (Not sure if it's good though)
-	VpPoint vpt = play.ScreenToRoom(x ? game_to_data_coord(*x) : 0, y ? game_to_data_coord(*y) : 0);
+	VpPoint vpt = _GP(play).ScreenToRoom(x ? game_to_data_coord(*x) : 0, y ? game_to_data_coord(*y) : 0);
 	if (x)
 		*x = vpt.first.X;
 	if (y)
@@ -484,31 +473,31 @@ void IAGSEngine::FreeBitmap(BITMAP *tofree) {
 		destroy_bitmap(tofree);
 }
 BITMAP *IAGSEngine::GetSpriteGraphic(int32 num) {
-	return (BITMAP *)spriteset[num]->GetAllegroBitmap();
+	return (BITMAP *)_GP(spriteset)[num]->GetAllegroBitmap();
 }
 BITMAP *IAGSEngine::GetRoomMask(int32 index) {
 	if (index == MASK_WALKABLE)
-		return (BITMAP *)thisroom.WalkAreaMask->GetAllegroBitmap();
+		return (BITMAP *)_GP(thisroom).WalkAreaMask->GetAllegroBitmap();
 	else if (index == MASK_WALKBEHIND)
-		return (BITMAP *)thisroom.WalkBehindMask->GetAllegroBitmap();
+		return (BITMAP *)_GP(thisroom).WalkBehindMask->GetAllegroBitmap();
 	else if (index == MASK_HOTSPOT)
-		return (BITMAP *)thisroom.HotspotMask->GetAllegroBitmap();
+		return (BITMAP *)_GP(thisroom).HotspotMask->GetAllegroBitmap();
 	else if (index == MASK_REGIONS)
-		return (BITMAP *)thisroom.RegionMask->GetAllegroBitmap();
+		return (BITMAP *)_GP(thisroom).RegionMask->GetAllegroBitmap();
 	else
 		quit("!IAGSEngine::GetRoomMask: invalid mask requested");
 	return nullptr;
 }
 AGSViewFrame *IAGSEngine::GetViewFrame(int32 view, int32 loop, int32 frame) {
 	view--;
-	if ((view < 0) || (view >= game.numviews))
+	if ((view < 0) || (view >= _GP(game).numviews))
 		quit("!IAGSEngine::GetViewFrame: invalid view");
-	if ((loop < 0) || (loop >= views[view].numLoops))
+	if ((loop < 0) || (loop >= _G(views)[view].numLoops))
 		quit("!IAGSEngine::GetViewFrame: invalid loop");
-	if ((frame < 0) || (frame >= views[view].loops[loop].numFrames))
+	if ((frame < 0) || (frame >= _G(views)[view].loops[loop].numFrames))
 		return nullptr;
 
-	return (AGSViewFrame *)&views[view].loops[loop].frames[frame];
+	return (AGSViewFrame *)&_G(views)[view].loops[loop].frames[frame];
 }
 
 int IAGSEngine::GetRawPixelColor(int32 color) {
@@ -516,7 +505,7 @@ int IAGSEngine::GetRawPixelColor(int32 color) {
 	// NOTE: it is unclear whether this has to be game colour depth or display color depth.
 	// there was no difference in the original engine, but there is now.
 	int result;
-	__my_setcolor(&result, color, game.GetColorDepth());
+	__my_setcolor(&result, color, _GP(game).GetColorDepth());
 	return result;
 }
 
@@ -539,13 +528,13 @@ int IAGSEngine::IsGamePaused() {
 	return game_paused;
 }
 int IAGSEngine::GetSpriteWidth(int32 slot) {
-	return game.SpriteInfos[slot].Width;
+	return _GP(game).SpriteInfos[slot].Width;
 }
 int IAGSEngine::GetSpriteHeight(int32 slot) {
-	return game.SpriteInfos[slot].Height;
+	return _GP(game).SpriteInfos[slot].Height;
 }
 void IAGSEngine::GetTextExtent(int32 font, const char *text, int32 *width, int32 *height) {
-	if ((font < 0) || (font >= game.numfonts)) {
+	if ((font < 0) || (font >= _GP(game).numfonts)) {
 		if (width != nullptr) width[0] = 0;
 		if (height != nullptr) height[0] = 0;
 		return;
@@ -567,7 +556,7 @@ void IAGSEngine::PlaySoundChannel(int32 channel, int32 soundType, int32 volume, 
 	stop_and_destroy_channel(channel);
 	// Not sure if it's right to let it play on *any* channel, but this is plugin so let it go...
 	// we must correctly stop background voice speech if it takes over speech chan
-	if (channel == SCHAN_SPEECH && play.IsNonBlockingVoiceSpeech())
+	if (channel == SCHAN_SPEECH && _GP(play).IsNonBlockingVoiceSpeech())
 		stop_voice_nonblocking();
 
 	SOUNDCLIP *newcha = nullptr;
@@ -608,10 +597,10 @@ void IAGSEngine::MarkRegionDirty(int32 left, int32 top, int32 right, int32 botto
 	plugins[this->pluginId].invalidatedRegion++;
 }
 AGSMouseCursor *IAGSEngine::GetMouseCursor(int32 cursor) {
-	if ((cursor < 0) || (cursor >= game.numcursors))
+	if ((cursor < 0) || (cursor >= _GP(game).numcursors))
 		return nullptr;
 
-	return (AGSMouseCursor *)&game.mcurs[cursor];
+	return (AGSMouseCursor *)&_GP(game).mcurs[cursor];
 }
 void IAGSEngine::GetRawColorComponents(int32 coldepth, int32 color, int32 *red, int32 *green, int32 *blue, int32 *alpha) {
 	if (red)
@@ -627,7 +616,7 @@ int IAGSEngine::MakeRawColorPixel(int32 coldepth, int32 red, int32 green, int32 
 	return makeacol_depth(coldepth, red, green, blue, alpha);
 }
 int IAGSEngine::GetFontType(int32 fontNum) {
-	if ((fontNum < 0) || (fontNum >= game.numfonts))
+	if ((fontNum < 0) || (fontNum >= _GP(game).numfonts))
 		return FNT_INVALID;
 
 	if (font_supports_extended_characters(fontNum))
@@ -640,7 +629,7 @@ int IAGSEngine::CreateDynamicSprite(int32 coldepth, int32 width, int32 height) {
 	// TODO: why is this implemented right here, should not an existing
 	// script handling implementation be called instead?
 
-	int gotSlot = spriteset.GetFreeIndex();
+	int gotSlot = _GP(spriteset).GetFreeIndex();
 	if (gotSlot <= 0)
 		return 0;
 
@@ -660,7 +649,7 @@ void IAGSEngine::DeleteDynamicSprite(int32 slot) {
 	free_dynamic_sprite(slot);
 }
 int IAGSEngine::IsSpriteAlphaBlended(int32 slot) {
-	if (game.SpriteInfos[slot].Flags & SPF_ALPHACHANNEL)
+	if (_GP(game).SpriteInfos[slot].Flags & SPF_ALPHACHANNEL)
 		return 1;
 	return 0;
 }
@@ -671,12 +660,12 @@ void IAGSEngine::DisableSound() {
 	usetup.audio_backend = 0;
 }
 int IAGSEngine::CanRunScriptFunctionNow() {
-	if (inside_script)
+	if (_G(inside_script))
 		return 0;
 	return 1;
 }
 int IAGSEngine::CallGameScriptFunction(const char *name, int32 globalScript, int32 numArgs, long arg1, long arg2, long arg3) {
-	if (inside_script)
+	if (_G(inside_script))
 		return -300;
 
 	ccInstance *toRun = GetScriptInstanceByType(globalScript ? kScInstGame : kScInstRoom);
@@ -692,33 +681,33 @@ int IAGSEngine::CallGameScriptFunction(const char *name, int32 globalScript, int
 void IAGSEngine::NotifySpriteUpdated(int32 slot) {
 	int ff;
 	// wipe the character cache when we change rooms
-	for (ff = 0; ff < game.numcharacters; ff++) {
-		if ((charcache[ff].inUse) && (charcache[ff].sppic == slot)) {
-			delete charcache[ff].image;
-			charcache[ff].image = nullptr;
-			charcache[ff].inUse = 0;
+	for (ff = 0; ff < _GP(game).numcharacters; ff++) {
+		if ((_G(charcache)[ff].inUse) && (_G(charcache)[ff].sppic == slot)) {
+			delete _G(charcache)[ff].image;
+			_G(charcache)[ff].image = nullptr;
+			_G(charcache)[ff].inUse = 0;
 		}
 	}
 
 	// clear the object cache
 	for (ff = 0; ff < MAX_ROOM_OBJECTS; ff++) {
-		if ((objcache[ff].image != nullptr) && (objcache[ff].sppic == slot)) {
-			delete objcache[ff].image;
-			objcache[ff].image = nullptr;
+		if ((_G(objcache)[ff].image != nullptr) && (_G(objcache)[ff].sppic == slot)) {
+			delete _G(objcache)[ff].image;
+			_G(objcache)[ff].image = nullptr;
 		}
 	}
 }
 
 void IAGSEngine::SetSpriteAlphaBlended(int32 slot, int32 isAlphaBlended) {
 
-	game.SpriteInfos[slot].Flags &= ~SPF_ALPHACHANNEL;
+	_GP(game).SpriteInfos[slot].Flags &= ~SPF_ALPHACHANNEL;
 
 	if (isAlphaBlended)
-		game.SpriteInfos[slot].Flags |= SPF_ALPHACHANNEL;
+		_GP(game).SpriteInfos[slot].Flags |= SPF_ALPHACHANNEL;
 }
 
 void IAGSEngine::QueueGameScriptFunction(const char *name, int32 globalScript, int32 numArgs, long arg1, long arg2) {
-	if (!inside_script) {
+	if (!_G(inside_script)) {
 		this->CallGameScriptFunction(name, globalScript, numArgs, arg1, arg2, 0);
 		return;
 	}
@@ -726,7 +715,7 @@ void IAGSEngine::QueueGameScriptFunction(const char *name, int32 globalScript, i
 	if (numArgs < 0 || numArgs > 2)
 		quit("IAGSEngine::QueueGameScriptFunction: invalid number of arguments");
 
-	curscript->run_another(name, globalScript ? kScInstGame : kScInstRoom, numArgs,
+	_G(curscript)->run_another(name, globalScript ? kScInstGame : kScInstRoom, numArgs,
 		RuntimeScriptValue().SetPluginArgument(arg1), RuntimeScriptValue().SetPluginArgument(arg2));
 }
 
@@ -779,7 +768,7 @@ const char *IAGSEngine::CreateScriptString(const char *fromText) {
 	const char *string = CreateNewScriptString(fromText);
 	// Should be still standard dynamic object, because not managed by plugin
 	// TODO: handle loss of const better
-	GlobalReturnValue.SetDynamicObject(const_cast<char *>(string), &myScriptStringImpl);
+	GlobalReturnValue.SetDynamicObject(const_cast<char *>(string), &_GP(myScriptStringImpl));
 	return string;
 }
 
@@ -801,21 +790,21 @@ void IAGSEngine::SimulateMouseClick(int32 button) {
 }
 
 int IAGSEngine::GetMovementPathWaypointCount(int32 pathId) {
-	return mls[pathId % TURNING_AROUND].numstage;
+	return _G(mls)[pathId % TURNING_AROUND].numstage;
 }
 
 int IAGSEngine::GetMovementPathLastWaypoint(int32 pathId) {
-	return mls[pathId % TURNING_AROUND].onstage;
+	return _G(mls)[pathId % TURNING_AROUND].onstage;
 }
 
 void IAGSEngine::GetMovementPathWaypointLocation(int32 pathId, int32 waypoint, int32 *x, int32 *y) {
-	*x = (mls[pathId % TURNING_AROUND].pos[waypoint] >> 16) & 0x0000ffff;
-	*y = (mls[pathId % TURNING_AROUND].pos[waypoint] & 0x0000ffff);
+	*x = (_G(mls)[pathId % TURNING_AROUND].pos[waypoint] >> 16) & 0x0000ffff;
+	*y = (_G(mls)[pathId % TURNING_AROUND].pos[waypoint] & 0x0000ffff);
 }
 
 void IAGSEngine::GetMovementPathWaypointSpeed(int32 pathId, int32 waypoint, int32 *xSpeed, int32 *ySpeed) {
-	*xSpeed = mls[pathId % TURNING_AROUND].xpermove[waypoint];
-	*ySpeed = mls[pathId % TURNING_AROUND].ypermove[waypoint];
+	*xSpeed = _G(mls)[pathId % TURNING_AROUND].xpermove[waypoint];
+	*ySpeed = _G(mls)[pathId % TURNING_AROUND].ypermove[waypoint];
 }
 
 int IAGSEngine::IsRunningUnderDebugger() {
@@ -899,11 +888,6 @@ void pl_run_plugin_init_gfx_hooks(const char *driverName, void *data) {
 	}
 }
 
-int pl_register_builtin_plugin(InbuiltPluginDetails const &details) {
-	_registered_builtin_plugins.push_back(details);
-	return 0;
-}
-
 Engine::GameInitError pl_register_plugins(const std::vector<Shared::PluginInfo> &infos) {
 	// WORKAROUND: Zak2 uses AGSFlashlight, but doesn't list it as a requirement.
 	// So allow ScummVM plugins specified to be added to the list
@@ -974,14 +958,8 @@ Engine::GameInitError pl_register_plugins(const std::vector<Shared::PluginInfo> 
 			apl->debugHook = (int(*)(const char *, int, int))apl->library.GetFunctionAddress("AGS_EngineDebugHook");
 			apl->initGfxHook = (void(*)(const char *, void *))apl->library.GetFunctionAddress("AGS_EngineInitGfx");
 		} else {
-			AGS::Shared::Debug::Printf(kDbgMsg_Info, "Plugin '%s' could not be loaded (expected '%s'), trying built-in plugins...",
+			AGS::Shared::Debug::Printf(kDbgMsg_Info, "Plugin '%s' could not be loaded (expected '%s')",
 				apl->filename, expect_filename.GetCStr());
-
-			// Plugin loading has failed at this point, try using built-in plugin function stubs
-			if (RegisterPluginStubs((const char *)apl->filename))
-				AGS::Shared::Debug::Printf(kDbgMsg_Info, "Placeholder functions for the plugin '%s' found.", apl->filename);
-			else
-				AGS::Shared::Debug::Printf(kDbgMsg_Info, "No placeholder functions for the plugin '%s' found. The game might fail to load!", apl->filename);
 			continue;
 		}
 

@@ -26,15 +26,16 @@
 #include "backends/keymapper/keymap.h"
 #include "common/random.h"
 #include "common/rect.h"
+#include "engines/advancedDetector.h"
 #include "engines/engine.h"
 
+#include "engines/metaengine.h"
 #include "graphics/managed_surface.h"
 #include "graphics/pixelformat.h"
 #include "graphics/surface.h"
-#include "metaengine.h"
-#include "twine/scene/actor.h"
-#include "twine/input.h"
 #include "twine/detection.h"
+#include "twine/input.h"
+#include "twine/scene/actor.h"
 
 namespace TwinE {
 
@@ -154,14 +155,14 @@ enum class EngineState {
 };
 
 struct ScopedEngineFreeze {
-	TwinEEngine* _engine;
-	ScopedEngineFreeze(TwinEEngine* engine);
+	TwinEEngine *_engine;
+	ScopedEngineFreeze(TwinEEngine *engine);
 	~ScopedEngineFreeze();
 };
 
 struct ScopedCursor {
-	TwinEEngine* _engine;
-	ScopedCursor(TwinEEngine* engine);
+	TwinEEngine *_engine;
+	ScopedCursor(TwinEEngine *engine);
 	~ScopedCursor();
 };
 
@@ -193,8 +194,6 @@ private:
 	void processBonusList();
 	void processInventoryAction();
 	void processOptionsMenu();
-	/** recenter screen on followed actor automatically */
-	void centerScreenOnActor();
 
 	void initConfigurations();
 	/** Initialize all needed stuffs at first time running engine */
@@ -228,6 +227,7 @@ public:
 
 	bool isLBA1() const { return _gameType == TwineGameType::GType_LBA; }
 	bool isLBA2() const { return _gameType == TwineGameType::GType_LBA2; }
+	bool isDemo() const { return (_gameFlags & ADGF_DEMO) != 0; };
 	const char *getGameId() const;
 
 	bool unlockAchievement(const Common::String &id);
@@ -266,6 +266,7 @@ public:
 	int width() const;
 	int height() const;
 	Common::Rect rect() const;
+	Common::Rect centerOnScreen(int32 w, int32 h) const;
 
 	void initSceneryView();
 	void exitSceneryView();
@@ -327,7 +328,7 @@ public:
 	 * @param numColors the number of palette entries to be updated
 	 * @param palette palette to set in RGB
 	 */
-	void setPalette(uint8 startColor, uint8 numColors, const byte *palette);
+	void setPalette(uint startColor, uint numColors, const byte *palette);
 
 	/** Blit surface in the screen */
 	void flip();

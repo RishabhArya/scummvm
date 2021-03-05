@@ -30,6 +30,7 @@
 #include "ags/engine/device/mousew32.h"
 #include "ags/engine/platform/base/agsplatformdriver.h"
 #include "ags/engine/ac/timer.h"
+#include "ags/globals.h"
 #include "ags/ags.h"
 #include "ags/events.h"
 
@@ -38,11 +39,8 @@ namespace AGS3 {
 using namespace AGS::Shared;
 using namespace AGS::Engine;
 
-extern GameSetupStruct game;
-extern GameState play;
-
 extern volatile unsigned long globalTimerCounter;
-extern int pluginSimulatedClick;
+int pluginSimulatedClick;
 extern int displayed_room;
 extern char check_dynamic_sprites_at_exit;
 
@@ -89,7 +87,7 @@ void ags_domouse(int what) {
 
 int ags_check_mouse_wheel() {
 	int result = 0;
-	if ((mouse_z != mouse_z_was) && (game.options[OPT_MOUSEWHEEL] != 0)) {
+	if ((mouse_z != mouse_z_was) && (_GP(game).options[OPT_MOUSEWHEEL] != 0)) {
 		if (mouse_z > mouse_z_was)
 			result = 1;
 		else
@@ -184,7 +182,7 @@ int ags_getch() {
 	}
 
 	// Alt+X, abort (but only once game is loaded)
-	if ((gott == play.abort_key) && (displayed_room >= 0)) {
+	if ((gott == _GP(play).abort_key) && (displayed_room >= 0)) {
 		check_dynamic_sprites_at_exit = 0;
 		quit("!|");
 	}

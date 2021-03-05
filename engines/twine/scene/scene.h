@@ -299,13 +299,9 @@ private:
 
 	int16 _sceneMusic = 0;
 
-	int16 _sceneHeroX = 0; // newTwinsenXByScene
-	int16 _sceneHeroY = 0; // newTwinsenYByScene
-	int16 _sceneHeroZ = 0; // newTwinsenZByScene
+	Vec3 _sceneHeroPos;
+	Vec3 _zoneHeroPos;
 
-	int16 _zoneHeroX = 0; // newTwinsenXByZone
-	int16 _zoneHeroY = 0; // newTwinsenYByZone
-	int16 _zoneHeroZ = 0; // newTwinsenZByZone
 	int32 _currentGameOverScene = 0;
 
 public:
@@ -327,9 +323,7 @@ public:
 	int32 alphaLight = ANGLE_0;
 	int32 betaLight = ANGLE_0;
 
-	int16 newHeroX = 0; // newTwinsenX
-	int16 newHeroY = 0; // newTwinsenY
-	int16 newHeroZ = 0; // newTwinsenZ
+	Vec3 newHeroPos;
 
 	/** Hero Y coordinate before fall */
 	int16 heroYBeforeFall = 0;

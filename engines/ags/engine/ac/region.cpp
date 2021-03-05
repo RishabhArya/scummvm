@@ -31,30 +31,25 @@
 #include "ags/engine/ac/dynobj/scriptdrawingsurface.h"
 #include "ags/shared/game/roomstruct.h"
 #include "ags/engine/script/runtimescriptvalue.h"
-
 #include "ags/shared/debugging/out.h"
 #include "ags/engine/script/script_api.h"
 #include "ags/engine/script/script_runtime.h"
+#include "ags/globals.h"
 
 namespace AGS3 {
 
 using namespace AGS::Shared;
 
-extern ScriptRegion scrRegion[MAX_ROOM_REGIONS];
-extern RoomStruct thisroom;
 extern RoomStatus *croom;
-extern GameSetupStruct game;
 extern COLOR_MAP maincoltable;
 extern color palette[256];
-extern CCRegion ccDynamicRegion;
-
 
 ScriptRegion *GetRegionAtRoom(int xx, int yy) {
-	return &scrRegion[GetRegionIDAtRoom(xx, yy)];
+	return &_G(scrRegion)[GetRegionIDAtRoom(xx, yy)];
 }
 
 ScriptRegion *GetRegionAtScreen(int x, int y) {
-	VpPoint vpt = play.ScreenToRoomDivDown(x, y);
+	VpPoint vpt = _GP(play).ScreenToRoomDivDown(x, y);
 	if (vpt.second < 0)
 		return nullptr;
 	return GetRegionAtRoom(vpt.first.X, vpt.first.Y);
@@ -65,37 +60,37 @@ void Region_SetLightLevel(ScriptRegion *ssr, int brightness) {
 }
 
 int Region_GetLightLevel(ScriptRegion *ssr) {
-	return thisroom.GetRegionLightLevel(ssr->id);
+	return _GP(thisroom).GetRegionLightLevel(ssr->id);
 }
 
 int Region_GetTintEnabled(ScriptRegion *srr) {
-	if (thisroom.Regions[srr->id].Tint & 0xFF000000)
+	if (_GP(thisroom).Regions[srr->id].Tint & 0xFF000000)
 		return 1;
 	return 0;
 }
 
 int Region_GetTintRed(ScriptRegion *srr) {
 
-	return thisroom.Regions[srr->id].Tint & 0x000000ff;
+	return _GP(thisroom).Regions[srr->id].Tint & 0x000000ff;
 }
 
 int Region_GetTintGreen(ScriptRegion *srr) {
 
-	return (thisroom.Regions[srr->id].Tint >> 8) & 0x000000ff;
+	return (_GP(thisroom).Regions[srr->id].Tint >> 8) & 0x000000ff;
 }
 
 int Region_GetTintBlue(ScriptRegion *srr) {
 
-	return (thisroom.Regions[srr->id].Tint >> 16) & 0x000000ff;
+	return (_GP(thisroom).Regions[srr->id].Tint >> 16) & 0x000000ff;
 }
 
 int Region_GetTintSaturation(ScriptRegion *srr) {
 
-	return (thisroom.Regions[srr->id].Tint >> 24) & 0xFF;
+	return (_GP(thisroom).Regions[srr->id].Tint >> 24) & 0xFF;
 }
 
 int Region_GetTintLuminance(ScriptRegion *srr) {
-	return thisroom.GetRegionTintLuminance(srr->id);
+	return _GP(thisroom).GetRegionTintLuminance(srr->id);
 }
 
 void Region_Tint(ScriptRegion *srr, int red, int green, int blue, int amount, int luminance) {
@@ -128,7 +123,7 @@ void Region_RunInteraction(ScriptRegion *ssr, int mood) {
 //=============================================================================
 
 void generate_light_table() {
-	if (game.color_depth == 1 && color_map == nullptr) {
+	if (_GP(game).color_depth == 1 && color_map == nullptr) {
 		create_light_table(&maincoltable, palette, 0, 0, 0, nullptr);
 		color_map = &maincoltable;
 	}
@@ -142,11 +137,11 @@ void generate_light_table() {
 
 // ScriptRegion *(int xx, int yy)
 RuntimeScriptValue Sc_GetRegionAtRoom(const RuntimeScriptValue *params, int32_t param_count) {
-	API_SCALL_OBJ_PINT2(ScriptRegion, ccDynamicRegion, GetRegionAtRoom);
+	API_SCALL_OBJ_PINT2(ScriptRegion, _GP(ccDynamicRegion), GetRegionAtRoom);
 }
 
 RuntimeScriptValue Sc_GetRegionAtScreen(const RuntimeScriptValue *params, int32_t param_count) {
-	API_SCALL_OBJ_PINT2(ScriptRegion, ccDynamicRegion, GetRegionAtScreen);
+	API_SCALL_OBJ_PINT2(ScriptRegion, _GP(ccDynamicRegion), GetRegionAtScreen);
 }
 
 RuntimeScriptValue Sc_Region_GetDrawingSurface(const RuntimeScriptValue *params, int32_t param_count) {

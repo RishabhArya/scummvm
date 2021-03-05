@@ -72,7 +72,6 @@ bool ALScummVMGfxModeList::GetMode(int index, DisplayMode &mode) const {
 	return false;
 }
 
-unsigned long _trans_alpha_blender32(unsigned long x, unsigned long y, unsigned long n);
 RGB faded_out_palette[256];
 
 
@@ -467,7 +466,7 @@ void ALScummVMGraphicsDriver::RenderSpriteBatch(const ALSpriteBatch &batch, Shar
 				set_alpha_blender();
 			else
 				// here _transparency is used as alpha (between 1 and 254)
-				set_blender_mode(nullptr, nullptr, _trans_alpha_blender32, 0, 0, 0, bitmap->_transparency);
+				set_blender_mode(kArgbToRgbBlender, 0, 0, 0, bitmap->_transparency);
 
 			surface->TransBlendBlt(bitmap->_bmp, drawAtX, drawAtY);
 		} else {
@@ -712,26 +711,6 @@ void ALScummVMGraphicsDriver::BoxOutEffect(bool blackingOut, int speed, int dela
 	}
 }
 // end fading routines
-
-// add the alpha values together, used for compositing alpha images
-unsigned long _trans_alpha_blender32(unsigned long x, unsigned long y, unsigned long n) {
-	unsigned long res, g;
-
-	n = (n * geta32(x)) / 256;
-
-	if (n)
-		n++;
-
-	res = ((x & 0xFF00FF) - (y & 0xFF00FF)) * n / 256 + y;
-	y &= 0xFF00;
-	x &= 0xFF00;
-	g = (x - y) * n / 256 + y;
-
-	res &= 0xFF00FF;
-	g &= 0xFF00;
-
-	return res | g;
-}
 
 
 ALScummVMGraphicsFactory *ALScummVMGraphicsFactory::_factory = nullptr;

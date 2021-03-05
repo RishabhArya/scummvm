@@ -157,6 +157,8 @@ struct BonusParameter {
 // but don't take the current state in account
 #define kAnimationType_4 4
 
+#define kActorMaxLife 50
+
 /**
  * Actors structure
  *
@@ -196,9 +198,7 @@ public:
 	bool isJumpAnimationActive() const;
 
 	int16 actorIdx = 0; // own actor index
-	int32 x = 0;
-	int32 y = 0;
-	int32 z = 0;
+	Vec3 pos;
 	int32 strengthOfHit = 0; // field_66
 	int32 hitBy = 0;
 	BonusParameter bonusParameter; // field_10
@@ -216,9 +216,11 @@ public:
 	int32 armor = 0; // field_14
 	int32 life = 0;
 
-	int32 collisionX = 0; // field_20
-	int32 collisionY = 0; // field_22
-	int32 collisionZ = 0; // field_24
+	void addLife(int32 val);
+
+	void setLife(int32 val);
+
+	Vec3 collisionPos;
 
 	int32 positionInMoveScript = 0;
 	uint8 *moveScript = nullptr;
@@ -238,9 +240,7 @@ public:
 	int32 zone = 0;
 
 	int32 lastRotationAngle = ANGLE_0;
-	int32 lastX = 0;
-	int32 lastZ = 0;
-	int32 lastY = 0;
+	Vec3 lastPos;
 	int32 previousAnimIdx = 0;
 	int32 doorStatus = 0;
 	int32 animPosition = 0;
@@ -251,6 +251,17 @@ public:
 	ActorMoveStruct move;
 	AnimTimerDataStruct animTimerData;
 };
+
+inline void ActorStruct::addLife(int32 val) {
+	setLife(life + val);
+}
+
+inline void ActorStruct::setLife(int32 val) {
+	life = val;
+	if (life > kActorMaxLife) {
+		life = kActorMaxLife;
+	}
+}
 
 class TwinEEngine;
 
@@ -291,12 +302,8 @@ public:
 
 	ActorStruct *processActorPtr = nullptr; // processActorVar1
 
-	/** Actor shadow X coordinate */
-	int32 shadowX = 0;
-	/** Actor shadow Y coordinate */
-	int32 shadowY = 0;
-	/** Actor shadow Z coordinate */
-	int32 shadowZ = 0;
+	/** Actor shadow coordinate */
+	Vec3 shadowCoord;
 	/** Actor shadow collition type - brick shape */
 	ShapeType shadowCollisionType = ShapeType::kNone; // shadowVar
 

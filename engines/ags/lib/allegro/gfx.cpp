@@ -73,10 +73,6 @@ void get_clip_rect(BITMAP *bitmap, int *x1, int *y1, int *x2, int *y2) {
 		*y2 = bitmap->cb;
 }
 
-void add_clip_rect(BITMAP *bitmap, int x1, int y1, int x2, int y2) {
-	warning("TODO: add_clip_rect");
-}
-
 void acquire_bitmap(BITMAP *bitmap) {
 	// No implementation needed
 }
@@ -146,8 +142,6 @@ void stretch_sprite(BITMAP *bmp, const BITMAP *sprite, int x, int y, int w, int 
 }
 
 void draw_trans_sprite(BITMAP *bmp, const BITMAP *sprite, int x, int y) {
-	assert(sprite->format.bytesPerPixel == 4);
-
 	bmp->draw(sprite, Common::Rect(0, 0, sprite->w, sprite->h),
 		Common::Rect(x, y, x + sprite->w, y + sprite->h),
 		false, false, true, trans_blend_alpha);

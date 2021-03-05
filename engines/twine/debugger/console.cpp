@@ -54,6 +54,7 @@ TwinEConsole::TwinEConsole(TwinEEngine *engine) : _engine(engine), GUI::Debugger
 	registerCmd("toggle_scenechanges", WRAP_METHOD(TwinEConsole, doToggleSceneChanges));
 	registerCmd("scene_actor", WRAP_METHOD(TwinEConsole, doSkipSceneActorsBut));
 	registerCmd("hero_pos", WRAP_METHOD(TwinEConsole, doSetHeroPosition));
+	registerCmd("set_life", WRAP_METHOD(TwinEConsole, doSetLife));
 	registerCmd("set_game_flag", WRAP_METHOD(TwinEConsole, doSetGameFlag));
 	registerCmd("show_game_flag", WRAP_METHOD(TwinEConsole, doPrintGameFlag));
 	registerCmd("set_inventory_flag", WRAP_METHOD(TwinEConsole, doSetInventoryFlag));
@@ -96,7 +97,7 @@ bool TwinEConsole::doToggleSceneryView(int argc, const char **argv) {
 bool TwinEConsole::doAddMagicPoints(int argc, const char **argv) {
 	if (argc < 2) {
 		debugPrintf("Usage: specify the magic points\n");
-		return false;
+		return true;
 	}
 	const int16 magicPoints = atoi(argv[1]);
 	_engine->_gameState->magicLevelIdx = CLIP<int16>(magicPoints, 0, 4);
@@ -107,7 +108,7 @@ bool TwinEConsole::doAddMagicPoints(int argc, const char **argv) {
 bool TwinEConsole::doSkipSceneActorsBut(int argc, const char **argv) {
 	if (argc < 2) {
 		debugPrintf("Usage: give actor id of scene or -1 to disable\n");
-		return false;
+		return true;
 	}
 	const int16 actorIdx = atoi(argv[1]);
 	debugPrintf("Only load actor %d in the next scene\n", actorIdx);
@@ -242,7 +243,7 @@ bool TwinEConsole::doGiveKey(int argc, const char **argv) {
 	if (argc >= 2) {
 		amount = atoi(argv[1]);
 	}
-	_engine->_gameState->setKeys(_engine->_gameState->inventoryNumKeys + amount);
+	_engine->_gameState->addKeys(amount);
 	return true;
 }
 
@@ -251,7 +252,7 @@ bool TwinEConsole::doGiveGas(int argc, const char **argv) {
 	if (argc >= 2) {
 		amount = atoi(argv[1]);
 	}
-	_engine->_gameState->setGas(_engine->_gameState->inventoryNumGas + amount);
+	_engine->_gameState->addGas(amount);
 	return true;
 }
 
@@ -260,7 +261,7 @@ bool TwinEConsole::doGiveKashes(int argc, const char **argv) {
 	if (argc >= 2) {
 		amount = atoi(argv[1]);
 	}
-	_engine->_gameState->setKashes(_engine->_gameState->inventoryNumKashes + amount);
+	_engine->_gameState->addKashes(amount);
 	return true;
 }
 
@@ -287,16 +288,14 @@ bool TwinEConsole::doListMenuText(int argc, const char **argv) {
 }
 
 bool TwinEConsole::doSetHeroPosition(int argc, const char **argv) {
+	Vec3 &pos = _engine->_scene->sceneHero->pos;
 	if (argc < 4) {
-		debugPrintf("Current hero position: %i:%i:%i\n", _engine->_scene->sceneHero->x, _engine->_scene->sceneHero->y, _engine->_scene->sceneHero->z);
+		debugPrintf("Current hero position: %i:%i:%i\n", pos.x, pos.y, pos.z);
 		return true;
 	}
-	const int16 x = atoi(argv[1]);
-	const int16 y = atoi(argv[2]);
-	const int16 z = atoi(argv[3]);
-	_engine->_scene->sceneHero->x = x;
-	_engine->_scene->sceneHero->y = y;
-	_engine->_scene->sceneHero->z = z;
+	pos.x = atoi(argv[1]);
+	pos.y = atoi(argv[2]);
+	pos.z = atoi(argv[3]);
 	return true;
 }
 
@@ -329,8 +328,8 @@ bool TwinEConsole::doDumpFile(int argc, const char **argv) {
 		debugPrintf("Expected to get a a hqr file and an index\n");
 		return true;
 	}
-	const char *hqr = argv[0];
-	const int index = atoi(argv[1]);
+	const char *hqr = argv[1];
+	const int index = atoi(argv[2]);
 	const Common::String &targetFileName = Common::String::format("dumps/%03i-%s.dump", index, hqr);
 	HQR::dumpEntry(hqr, index, targetFileName.c_str());
 	return true;
@@ -400,26 +399,22 @@ bool TwinEConsole::doGiveAllItems(int argc, const char **argv) {
 	if (argc >= 2) {
 		amount = atoi(argv[1]);
 	}
-	state->inventoryNumKeys += amount;
-	state->inventoryNumKashes += amount;
-	state->inventoryNumLeafsBox += amount;
-	state->inventoryNumLeafs += amount;
-	state->inventoryMagicPoints += amount;
-	state->setGas(state->inventoryNumGas + amount);
-	state->setKashes(state->inventoryNumKashes + amount);
+	state->addKeys(amount);
+	state->addLeafBoxes(amount);
+	state->addKashes(amount);
+	state->addLeafs(amount);
+	state->addMagicPoints(amount);
+	state->addGas(amount);
 
-	if (state->inventoryNumLeafsBox > 10) {
-		state->inventoryNumLeafsBox = 10;
+	return true;
+}
+
+bool TwinEConsole::doSetLife(int argc, const char **argv) {
+	if (argc <= 1) {
+		debugPrintf("Expected to get the life points as parameter\n");
+		return true;
 	}
-
-	if (state->inventoryNumLeafs > state->inventoryNumLeafsBox) {
-		state->inventoryNumLeafs = state->inventoryNumLeafsBox;
-	}
-
-	if (state->inventoryMagicPoints > state->magicLevelIdx * 20) {
-		state->inventoryMagicPoints = state->magicLevelIdx * 20;
-	}
-
+	_engine->_scene->sceneHero->setLife(atoi(argv[1]));
 	return true;
 }
 

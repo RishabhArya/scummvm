@@ -73,6 +73,9 @@
 #include "twine/script/script_move_v1.h"
 #include "twine/text.h"
 
+#define ORIGINAL_WIDTH 640
+#define ORIGINAL_HEIGHT 480
+
 namespace TwinE {
 
 ScopedEngineFreeze::ScopedEngineFreeze(TwinEEngine *engine) : _engine(engine) {
@@ -223,8 +226,8 @@ Common::Error TwinEEngine::run() {
 	debug("(c) 1994 by Adeline Software International, All Rights Reserved.");
 
 	syncSoundSettings();
-	int32 w = 640;
-	int32 h = 480;
+	int32 w = ORIGINAL_WIDTH;
+	int32 h = ORIGINAL_HEIGHT;
 	if (ConfMan.hasKey("usehighres")) {
 		const bool highRes = ConfMan.getBool("usehighres");
 		if (highRes) {
@@ -263,7 +266,7 @@ Common::Error TwinEEngine::run() {
 		}
 		case EngineState::LoadedGame:
 			debug("Loaded game");
-			if (_scene->newHeroX == -1) {
+			if (_scene->newHeroPos.x == -1) {
 				_scene->heroPositionType = ScenePositionType::kNoPosition;
 			}
 			_text->renderTextTriangle = false;
@@ -349,14 +352,14 @@ Common::Error TwinEEngine::saveGameStream(Common::WriteStream *stream, bool isAu
 }
 
 void TwinEEngine::autoSave() {
-	// TODO: scene title, not player name
-	saveGameState(getAutosaveSlot(), _gameState->playerName, true);
+	debug("Autosave %s", _gameState->sceneName);
+	saveGameState(getAutosaveSlot(), _gameState->sceneName, true);
 }
 
 void TwinEEngine::allocVideoMemory(int32 w, int32 h) {
 	const Graphics::PixelFormat format = Graphics::PixelFormat::createFormatCLUT8();
 
-	imageBuffer.create(640, 480, format); // original lba1 resolution for a lot of images.
+	imageBuffer.create(ORIGINAL_WIDTH, ORIGINAL_HEIGHT, format); // original lba1 resolution for a lot of images.
 
 	workVideoBuffer.create(w, h, format);
 	frontVideoBuffer.create(w, h, format);
@@ -509,7 +512,7 @@ void TwinEEngine::exitSceneryView() {
 }
 
 void TwinEEngine::initAll() {
-	memset(_menu->itemAngle, 0, sizeof(_menu->itemAngle)); // reset inventory items angles
+	Common::fill(&_menu->itemAngle[0], &_menu->itemAngle[NUM_INVENTORY_ITEMS], 0);
 
 	_redraw->bubbleSpriteIndex = SPRITEHQR_DIAG_BUBBLE_LEFT;
 
@@ -550,7 +553,7 @@ void TwinEEngine::unfreezeTime() {
 void TwinEEngine::processActorSamplePosition(int32 actorIdx) {
 	const ActorStruct *actor = _scene->getActor(actorIdx);
 	const int32 channelIdx = _sound->getActorChannel(actorIdx);
-	_sound->setSamplePosition(channelIdx, actor->x, actor->y, actor->z);
+	_sound->setSamplePosition(channelIdx, actor->pos.x, actor->pos.y, actor->pos.z);
 }
 
 void TwinEEngine::processBookOfBu() {
@@ -569,8 +572,8 @@ void TwinEEngine::processBookOfBu() {
 	_text->initSceneTextBank();
 	_screens->fadeToBlack(_screens->paletteRGBACustom);
 	_screens->clearScreen();
-	flip();
 	setPalette(_screens->paletteRGBA);
+	flip();
 	_screens->lockPalette = true;
 }
 
@@ -633,15 +636,15 @@ void TwinEEngine::processInventoryAction() {
 	case kiPinguin: {
 		ActorStruct *pinguin = _scene->getActor(_scene->mecaPinguinIdx);
 
-		pinguin->x = _renderer->destX + _scene->sceneHero->x;
-		pinguin->y = _scene->sceneHero->y;
-		pinguin->z = _renderer->destZ + _scene->sceneHero->z;
+		pinguin->pos.x = _renderer->destPos.x + _scene->sceneHero->pos.x;
+		pinguin->pos.y = _scene->sceneHero->pos.y;
+		pinguin->pos.z = _renderer->destPos.z + _scene->sceneHero->pos.z;
 		pinguin->angle = _scene->sceneHero->angle;
 
 		_movements->rotateActor(0, 800, pinguin->angle);
 
 		if (!_collision->checkCollisionWithActors(_scene->mecaPinguinIdx)) {
-			pinguin->life = 50;
+			pinguin->setLife(kActorMaxLife);
 			pinguin->body = BodyType::btNone;
 			_actor->initModelActor(BodyType::btNormal, _scene->mecaPinguinIdx);
 			pinguin->dynamicFlags.bIsDead = 0; // &= 0xDF
@@ -660,11 +663,11 @@ void TwinEEngine::processInventoryAction() {
 		break;
 	}
 	case kiCloverLeaf:
-		if (_scene->sceneHero->life < 50) {
+		if (_scene->sceneHero->life < kActorMaxLife) {
 			if (_gameState->inventoryNumLeafs > 0) {
-				_scene->sceneHero->life = 50;
-				_gameState->inventoryMagicPoints = _gameState->magicLevelIdx * 20;
-				_gameState->inventoryNumLeafs--;
+				_scene->sceneHero->setLife(kActorMaxLife);
+				_gameState->setMagicPoints(_gameState->magicLevelIdx * 20);
+				_gameState->addLeafs(-1);
 				_redraw->addOverlay(OverlayType::koInventoryItem, InventoryItems::kiCloverLeaf, 0, 0, 0, OverlayPosType::koNormal, 3);
 			}
 		}
@@ -684,35 +687,6 @@ void TwinEEngine::processOptionsMenu() {
 	_redraw->redrawEngineActions(true);
 }
 
-void TwinEEngine::centerScreenOnActor() {
-	if (disableScreenRecenter) {
-		return;
-	}
-	if (_debugGrid->useFreeCamera) {
-		return;
-	}
-
-	ActorStruct *actor = _scene->getActor(_scene->currentlyFollowedActor);
-	_renderer->projectPositionOnScreen(actor->x - (_grid->newCameraX * BRICK_SIZE),
-	                                   actor->y - (_grid->newCameraY * BRICK_HEIGHT),
-	                                   actor->z - (_grid->newCameraZ * BRICK_SIZE));
-	if (_renderer->projPosX < 80 || _renderer->projPosX >= width() - 60 || _renderer->projPosY < 80 || _renderer->projPosY >= height() - 50) {
-		_grid->newCameraX = ((actor->x + BRICK_HEIGHT) / BRICK_SIZE) + (((actor->x + BRICK_HEIGHT) / BRICK_SIZE) - _grid->newCameraX) / 2;
-		_grid->newCameraY = actor->y / BRICK_HEIGHT;
-		_grid->newCameraZ = ((actor->z + BRICK_HEIGHT) / BRICK_SIZE) + (((actor->z + BRICK_HEIGHT) / BRICK_SIZE) - _grid->newCameraZ) / 2;
-
-		if (_grid->newCameraX >= GRID_SIZE_X) {
-			_grid->newCameraX = GRID_SIZE_X - 1;
-		}
-
-		if (_grid->newCameraZ >= GRID_SIZE_Z) {
-			_grid->newCameraZ = GRID_SIZE_Z - 1;
-		}
-
-		_redraw->reqBgRedraw = true;
-	}
-}
-
 int32 TwinEEngine::runGameEngine() { // mainLoopInteration
 	FrameMarker frame;
 	_input->enableKeyMap(mainKeyMapId);
@@ -725,6 +699,12 @@ int32 TwinEEngine::runGameEngine() { // mainLoopInteration
 	}
 
 	if (_scene->needChangeScene > -1) {
+		if (isDemo() && isLBA1()) {
+			// the demo only has these two scenes
+			if (_scene->needChangeScene != LBA1SceneId::Citadel_Island_Prison && _scene->needChangeScene != LBA1SceneId::Citadel_Island_outside_the_citadel) {
+				return 1;
+			}
+		}
 		_scene->changeScene();
 	}
 
@@ -816,10 +796,7 @@ int32 TwinEEngine::runGameEngine() { // mainLoopInteration
 		// Recenter Screen
 		if (_input->toggleActionIfActive(TwinEActionType::RecenterScreenOnTwinsen) && !disableScreenRecenter) {
 			const ActorStruct *currentlyFollowedActor = _scene->getActor(_scene->currentlyFollowedActor);
-			_grid->newCameraX = currentlyFollowedActor->x / BRICK_SIZE;
-			_grid->newCameraY = currentlyFollowedActor->y / BRICK_HEIGHT;
-			_grid->newCameraZ = currentlyFollowedActor->z / BRICK_SIZE;
-			_redraw->reqBgRedraw = true;
+			_grid->centerOnActor(currentlyFollowedActor);
 		}
 
 		// Draw holomap
@@ -887,10 +864,10 @@ int32 TwinEEngine::runGameEngine() { // mainLoopInteration
 				_animations->initAnim(AnimationTypes::kLandDeath, kAnimationType_4, AnimationTypes::kStanding, 0);
 				actor->controlMode = ControlMode::kNoMove;
 			} else {
-				_sound->playSample(Samples::Explode, 1, actor->x, actor->y, actor->z, a);
+				_sound->playSample(Samples::Explode, 1, actor->pos, a);
 
 				if (a == _scene->mecaPinguinIdx) {
-					_extra->addExtraExplode(actor->x, actor->y, actor->z);
+					_extra->addExtraExplode(actor->pos.x, actor->pos.y, actor->pos.z);
 				}
 			}
 
@@ -901,9 +878,7 @@ int32 TwinEEngine::runGameEngine() { // mainLoopInteration
 
 		_movements->processActorMovements(a);
 
-		actor->collisionX = actor->x;
-		actor->collisionY = actor->y;
-		actor->collisionZ = actor->z;
+		actor->collisionPos = actor->pos;
 
 		if (actor->positionInMoveScript != -1) {
 			_scriptMove->processMoveScript(a);
@@ -926,7 +901,7 @@ int32 TwinEEngine::runGameEngine() { // mainLoopInteration
 		}
 
 		if (actor->staticFlags.bCanDrown) {
-			int32 brickSound = _grid->getBrickSoundType(actor->x, actor->y - 1, actor->z);
+			int32 brickSound = _grid->getBrickSoundType(actor->pos.x, actor->pos.y - 1, actor->pos.z);
 			actor->brickSound = brickSound;
 
 			if ((brickSound & 0xF0) == 0xF0) {
@@ -935,22 +910,22 @@ int32 TwinEEngine::runGameEngine() { // mainLoopInteration
 						if (_actor->heroBehaviour != HeroBehaviourType::kProtoPack || actor->anim != AnimationTypes::kForward) {
 							if (!_actor->cropBottomScreen) {
 								_animations->initAnim(AnimationTypes::kDrawn, kAnimationType_4, AnimationTypes::kStanding, 0);
-								_renderer->projectPositionOnScreen(actor->x - _grid->cameraX, actor->y - _grid->cameraY, actor->z - _grid->cameraZ);
-								_actor->cropBottomScreen = _renderer->projPosY;
+								_renderer->projectPositionOnScreen(actor->pos - _grid->camera);
+								_actor->cropBottomScreen = _renderer->projPos.y;
 							}
-							_renderer->projectPositionOnScreen(actor->x - _grid->cameraX, actor->y - _grid->cameraY, actor->z - _grid->cameraZ);
+							_renderer->projectPositionOnScreen(actor->pos - _grid->camera);
 							actor->controlMode = ControlMode::kNoMove;
-							actor->life = -1;
-							_actor->cropBottomScreen = _renderer->projPosY;
+							actor->setLife(-1);
+							_actor->cropBottomScreen = _renderer->projPos.y;
 							actor->staticFlags.bCanDrown |= 0x10; // TODO: doesn't make sense
 						}
 					} else {
-						_sound->playSample(Samples::Explode, 1, actor->x, actor->y, actor->z, a);
+						_sound->playSample(Samples::Explode, 1, actor->pos, a);
 						if (actor->bonusParameter.cloverleaf || actor->bonusParameter.kashes || actor->bonusParameter.key || actor->bonusParameter.lifepoints || actor->bonusParameter.magicpoints) {
 							if (!actor->bonusParameter.unk1) {
 								_actor->processActorExtraBonus(a);
 							}
-							actor->life = 0;
+							actor->setLife(0);
 						}
 					}
 				}
@@ -961,36 +936,32 @@ int32 TwinEEngine::runGameEngine() { // mainLoopInteration
 			if (IS_HERO(a)) {
 				if (actor->dynamicFlags.bAnimEnded) {
 					if (_gameState->inventoryNumLeafs > 0) { // use clover leaf automaticaly
-						_scene->sceneHero->x = _scene->newHeroX;
-						_scene->sceneHero->y = _scene->newHeroY;
-						_scene->sceneHero->z = _scene->newHeroZ;
+						_scene->sceneHero->pos = _scene->newHeroPos;
 
 						_scene->needChangeScene = _scene->currentSceneIdx;
 						_gameState->inventoryMagicPoints = _gameState->magicLevelIdx * 20;
 
-						_grid->newCameraX = (_scene->sceneHero->x / BRICK_SIZE);
-						_grid->newCameraY = (_scene->sceneHero->y / BRICK_HEIGHT);
-						_grid->newCameraZ = (_scene->sceneHero->z / BRICK_SIZE);
+						_grid->centerOnActor(_scene->sceneHero);
 
 						_scene->heroPositionType = ScenePositionType::kReborn;
 
-						_scene->sceneHero->life = 50;
+						_scene->sceneHero->setLife(kActorMaxLife);
 						_redraw->reqBgRedraw = true;
 						_screens->lockPalette = true;
-						_gameState->inventoryNumLeafs--;
+						_gameState->addLeafs(-1);
 						_actor->cropBottomScreen = 0;
 					} else { // game over
-						_gameState->inventoryNumLeafsBox = 2;
-						_gameState->inventoryNumLeafs = 1;
-						_gameState->inventoryMagicPoints = _gameState->magicLevelIdx * 20;
+						_gameState->setLeafBoxes(2);
+						_gameState->setLeafs(1);
+						_gameState->setMagicPoints(_gameState->magicLevelIdx * 20);
 						_actor->heroBehaviour = _actor->previousHeroBehaviour;
 						actor->angle = _actor->previousHeroAngle;
-						actor->life = 50;
+						actor->setLife(kActorMaxLife);
 
 						if (_scene->previousSceneIdx != _scene->currentSceneIdx) {
-							_scene->newHeroX = -1;
-							_scene->newHeroY = -1;
-							_scene->newHeroZ = -1;
+							_scene->newHeroPos.x = -1;
+							_scene->newHeroPos.y = -1;
+							_scene->newHeroPos.z = -1;
 							_scene->currentSceneIdx = _scene->previousSceneIdx;
 							_scene->stopRunningGame();
 						}
@@ -1014,7 +985,7 @@ int32 TwinEEngine::runGameEngine() { // mainLoopInteration
 		}
 	}
 
-	centerScreenOnActor();
+	_grid->centerScreenOnActor();
 
 	_redraw->redrawEngineActions(_redraw->reqBgRedraw);
 
@@ -1083,13 +1054,11 @@ void TwinEEngine::setPalette(const uint32 *palette) {
 		out += 3;
 		in += 4;
 	}
-	g_system->getPaletteManager()->setPalette(pal, 0, NUMOFCOLORS);
-	flip();
+	setPalette(0, NUMOFCOLORS, pal);
 }
 
-void TwinEEngine::setPalette(uint8 startColor, uint8 numColors, const byte *palette) {
+void TwinEEngine::setPalette(uint startColor, uint numColors, const byte *palette) {
 	g_system->getPaletteManager()->setPalette(palette, startColor, numColors);
-	flip();
 }
 
 void TwinEEngine::flip() {
@@ -1193,6 +1162,14 @@ bool TwinEEngine::unlockAchievement(const Common::String &id) {
 	}
 
 	return AchMan.setAchievement(id, msg);
+}
+
+Common::Rect TwinEEngine::centerOnScreen(int32 w, int32 h) const {
+	const int32 left = width() / 2 - w / 2;
+	const int32 right = left + w;
+	const int32 top = height() / 2 - h / 2;
+	const int32 bottom = top + h;
+	return Common::Rect(left, top, right, bottom);
 }
 
 } // namespace TwinE

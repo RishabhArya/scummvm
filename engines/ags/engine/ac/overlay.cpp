@@ -37,27 +37,21 @@
 #include "ags/engine/gfx/graphicsdriver.h"
 #include "ags/shared/gfx/bitmap.h"
 #include "ags/engine/script/runtimescriptvalue.h"
-
 #include "ags/shared/debugging/out.h"
 #include "ags/engine/script/script_api.h"
 #include "ags/engine/script/script_runtime.h"
+#include "ags/globals.h"
 
 namespace AGS3 {
 
 using namespace AGS::Shared;
 using namespace AGS::Engine;
 
-extern GameSetupStruct game;
 extern int displayed_room;
 extern int face_talking;
-extern ViewStruct *views;
+
 extern CharacterExtras *charextra;
 extern IGraphicsDriver *gfxDriver;
-
-
-
-std::vector<ScreenOverlay> screenover;
-int is_complete_overlay = 0, is_text_overlay = 0;
 
 void Overlay_Remove(ScriptOverlay *sco) {
 	sco->Remove();
@@ -67,8 +61,8 @@ void Overlay_SetText(ScriptOverlay *scover, int wii, int fontid, int text_color,
 	int ovri = find_overlay_of_type(scover->overlayId);
 	if (ovri < 0)
 		quit("!Overlay.SetText: invalid overlay ID specified");
-	int xx = game_to_data_coord(screenover[ovri].x) - scover->borderWidth;
-	int yy = game_to_data_coord(screenover[ovri].y) - scover->borderHeight;
+	int xx = game_to_data_coord(_GP(screenover)[ovri].x) - scover->borderWidth;
+	int yy = game_to_data_coord(_GP(screenover)[ovri].y) - scover->borderHeight;
 
 	RemoveOverlay(scover->overlayId);
 	const int disp_type = scover->overlayId;
@@ -83,7 +77,7 @@ int Overlay_GetX(ScriptOverlay *scover) {
 		quit("!invalid overlay ID specified");
 
 	int tdxp, tdyp;
-	get_overlay_position(screenover[ovri], &tdxp, &tdyp);
+	get_overlay_position(_GP(screenover)[ovri], &tdxp, &tdyp);
 
 	return game_to_data_coord(tdxp);
 }
@@ -93,7 +87,7 @@ void Overlay_SetX(ScriptOverlay *scover, int newx) {
 	if (ovri < 0)
 		quit("!invalid overlay ID specified");
 
-	screenover[ovri].x = data_to_game_coord(newx);
+	_GP(screenover)[ovri].x = data_to_game_coord(newx);
 }
 
 int Overlay_GetY(ScriptOverlay *scover) {
@@ -102,7 +96,7 @@ int Overlay_GetY(ScriptOverlay *scover) {
 		quit("!invalid overlay ID specified");
 
 	int tdxp, tdyp;
-	get_overlay_position(screenover[ovri], &tdxp, &tdyp);
+	get_overlay_position(_GP(screenover)[ovri], &tdxp, &tdyp);
 
 	return game_to_data_coord(tdyp);
 }
@@ -112,7 +106,7 @@ void Overlay_SetY(ScriptOverlay *scover, int newy) {
 	if (ovri < 0)
 		quit("!invalid overlay ID specified");
 
-	screenover[ovri].y = data_to_game_coord(newy);
+	_GP(screenover)[ovri].y = data_to_game_coord(newy);
 }
 
 int Overlay_GetValid(ScriptOverlay *scover) {
@@ -147,8 +141,8 @@ ScriptOverlay *Overlay_CreateTextual(int x, int y, int width, int font, int colo
 	sco->overlayId = CreateTextOverlayCore(x, y, width, font, colour, text, DISPLAYTEXT_NORMALOVERLAY, 0);
 
 	int ovri = find_overlay_of_type(sco->overlayId);
-	sco->borderWidth = game_to_data_coord(screenover[ovri].x - x);
-	sco->borderHeight = game_to_data_coord(screenover[ovri].y - y);
+	sco->borderWidth = game_to_data_coord(_GP(screenover)[ovri].x - x);
+	sco->borderHeight = game_to_data_coord(_GP(screenover)[ovri].y - y);
 	sco->isBackgroundSpeech = 0;
 
 	ccRegisterManagedObject(sco, sco);
@@ -170,11 +164,11 @@ void dispose_overlay(ScreenOverlay &over) {
 }
 
 void remove_screen_overlay_index(size_t over_idx) {
-	ScreenOverlay &over = screenover[over_idx];
+	ScreenOverlay &over = _GP(screenover)[over_idx];
 	dispose_overlay(over);
-	if (over.type == OVER_COMPLETE) is_complete_overlay--;
-	if (over.type == OVER_TEXTMSG) is_text_overlay--;
-	screenover.erase(screenover.begin() + over_idx);
+	if (over.type == OVER_COMPLETE) _G(is_complete_overlay)--;
+	if (over.type == OVER_TEXTMSG) _G(is_text_overlay)--;
+	_GP(screenover).erase(_GP(screenover).begin() + over_idx);
 	// if an overlay before the sierra-style speech one is removed,
 	// update the index
 	if (face_talking >= 0 && (size_t)face_talking > over_idx)
@@ -182,8 +176,8 @@ void remove_screen_overlay_index(size_t over_idx) {
 }
 
 void remove_screen_overlay(int type) {
-	for (size_t i = 0; i < screenover.size();) {
-		if (type < 0 || screenover[i].type == type)
+	for (size_t i = 0; i < _GP(screenover).size();) {
+		if (type < 0 || _GP(screenover)[i].type == type)
 			remove_screen_overlay_index(i);
 		else
 			i++;
@@ -191,8 +185,8 @@ void remove_screen_overlay(int type) {
 }
 
 int find_overlay_of_type(int type) {
-	for (size_t i = 0; i < screenover.size(); ++i) {
-		if (screenover[i].type == type) return i;
+	for (size_t i = 0; i < _GP(screenover).size(); ++i) {
+		if (_GP(screenover)[i].type == type) return i;
 	}
 	return -1;
 }
@@ -202,11 +196,11 @@ size_t add_screen_overlay(int x, int y, int type, Bitmap *piccy, bool alphaChann
 }
 
 size_t add_screen_overlay(int x, int y, int type, Shared::Bitmap *piccy, int pic_offx, int pic_offy, bool alphaChannel) {
-	if (type == OVER_COMPLETE) is_complete_overlay++;
-	if (type == OVER_TEXTMSG) is_text_overlay++;
+	if (type == OVER_COMPLETE) _G(is_complete_overlay)++;
+	if (type == OVER_TEXTMSG) _G(is_text_overlay)++;
 	if (type == OVER_CUSTOM) {
 		// find an unused custom ID; TODO: find a better approach!
-		for (int id = OVER_CUSTOM + 1; id < (int)screenover.size() + OVER_CUSTOM + 1; ++id) {
+		for (int id = OVER_CUSTOM + 1; id < (int)_GP(screenover).size() + OVER_CUSTOM + 1; ++id) {
 			if (find_overlay_of_type(id) == -1) {
 				type = id;
 				break;
@@ -226,26 +220,26 @@ size_t add_screen_overlay(int x, int y, int type, Shared::Bitmap *piccy, int pic
 	over.associatedOverlayHandle = 0;
 	over.hasAlphaChannel = alphaChannel;
 	over.positionRelativeToScreen = true;
-	screenover.push_back(over);
-	return screenover.size() - 1;
+	_GP(screenover).push_back(over);
+	return _GP(screenover).size() - 1;
 }
 
 
 
 void get_overlay_position(const ScreenOverlay &over, int *x, int *y) {
 	int tdxp, tdyp;
-	const Rect &ui_view = play.GetUIViewport();
+	const Rect &ui_view = _GP(play).GetUIViewport();
 
 	if (over.x == OVR_AUTOPLACE) {
 		// auto place on character
 		int charid = over.y;
 
 		auto view = FindNearestViewport(charid);
-		const int charpic = views[game.chars[charid].view].loops[game.chars[charid].loop].frames[0].pic;
-		const int height = (charextra[charid].height < 1) ? game.SpriteInfos[charpic].Height : charextra[charid].height;
+		const int charpic = _G(views)[_GP(game).chars[charid].view].loops[_GP(game).chars[charid].loop].frames[0].pic;
+		const int height = (charextra[charid].height < 1) ? _GP(game).SpriteInfos[charpic].Height : charextra[charid].height;
 		Point screenpt = view->RoomToScreen(
-			data_to_game_coord(game.chars[charid].x),
-			data_to_game_coord(game.chars[charid].get_effective_y()) - height).first;
+			data_to_game_coord(_GP(game).chars[charid].x),
+			data_to_game_coord(_GP(game).chars[charid].get_effective_y()) - height).first;
 		tdxp = screenpt.X - over.pic->GetWidth() / 2;
 		if (tdxp < 0) tdxp = 0;
 		tdyp = screenpt.Y - get_fixed_pixel_size(5);
@@ -254,7 +248,7 @@ void get_overlay_position(const ScreenOverlay &over, int *x, int *y) {
 
 		if ((tdxp + over.pic->GetWidth()) >= ui_view.GetWidth())
 			tdxp = (ui_view.GetWidth() - over.pic->GetWidth()) - 1;
-		if (game.chars[charid].room != displayed_room) {
+		if (_GP(game).chars[charid].room != displayed_room) {
 			tdxp = ui_view.GetWidth() / 2 - over.pic->GetWidth() / 2;
 			tdyp = ui_view.GetHeight() / 2 - over.pic->GetHeight() / 2;
 		}
@@ -265,7 +259,7 @@ void get_overlay_position(const ScreenOverlay &over, int *x, int *y) {
 		tdyp = over.y + over._offsetY;
 
 		if (!over.positionRelativeToScreen) {
-			Point tdxy = play.RoomToScreen(tdxp, tdyp);
+			Point tdxy = _GP(play).RoomToScreen(tdxp, tdyp);
 			tdxp = tdxy.X;
 			tdyp = tdxy.Y;
 		}
@@ -275,7 +269,7 @@ void get_overlay_position(const ScreenOverlay &over, int *x, int *y) {
 }
 
 void recreate_overlay_ddbs() {
-	for (auto &over : screenover) {
+	for (auto &over : _GP(screenover)) {
 		if (over.bmp)
 			gfxDriver->DestroyDDB(over.bmp);
 		if (over.pic)

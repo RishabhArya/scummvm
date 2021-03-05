@@ -173,9 +173,9 @@ bool Scene::loadSceneLBA2() {
 	_sceneMusic = stream.readByte();
 
 	// load hero properties
-	_sceneHeroX = stream.readSint16LE();
-	_sceneHeroY = stream.readSint16LE();
-	_sceneHeroZ = stream.readSint16LE();
+	_sceneHeroPos.x = stream.readSint16LE();
+	_sceneHeroPos.y = stream.readSint16LE();
+	_sceneHeroPos.z = stream.readSint16LE();
 
 	sceneHero->moveScriptSize = stream.readUint16LE();
 	sceneHero->moveScript = currentScene + stream.pos();
@@ -197,12 +197,10 @@ bool Scene::loadSceneLBA2() {
 		act->body = (BodyType)stream.readSint16LE();
 		act->anim = (AnimationTypes)stream.readByte();
 		act->sprite = stream.readUint16LE();
-		act->x = stream.readUint16LE();
-		act->collisionX = act->x;
-		act->y = stream.readUint16LE();
-		act->collisionY = act->y;
-		act->z = stream.readUint16LE();
-		act->collisionZ = act->z;
+		act->pos.x = stream.readUint16LE();
+		act->pos.y = stream.readUint16LE();
+		act->pos.z = stream.readUint16LE();
+		act->collisionPos = act->pos;
 		act->strengthOfHit = stream.readByte();
 		setBonusParameterFlags(act, stream.readUint16LE());
 		act->angle = stream.readUint16LE();
@@ -222,7 +220,7 @@ bool Scene::loadSceneLBA2() {
 			/*act->cropBottom = act->spriteSizeHit;*/
 		}
 		act->armor = stream.readByte();
-		act->life = stream.readByte();
+		act->setLife(stream.readByte());
 
 		act->moveScriptSize = stream.readUint16LE();
 		act->moveScript = currentScene + stream.pos();
@@ -305,9 +303,9 @@ bool Scene::loadSceneLBA1() {
 	_sceneMusic = stream.readByte();
 
 	// load hero properties
-	_sceneHeroX = stream.readUint16LE();
-	_sceneHeroY = stream.readUint16LE();
-	_sceneHeroZ = stream.readUint16LE();
+	_sceneHeroPos.x = stream.readUint16LE();
+	_sceneHeroPos.y = stream.readUint16LE();
+	_sceneHeroPos.z = stream.readUint16LE();
 
 	sceneHero->moveScriptSize = stream.readUint16LE();
 	sceneHero->moveScript = currentScene + stream.pos();
@@ -330,12 +328,12 @@ bool Scene::loadSceneLBA1() {
 		act->body = (BodyType)stream.readByte();
 		act->anim = (AnimationTypes)stream.readByte();
 		act->sprite = stream.readUint16LE();
-		act->x = stream.readUint16LE();
-		act->collisionX = act->x;
-		act->y = stream.readUint16LE();
-		act->collisionY = act->y;
-		act->z = stream.readUint16LE();
-		act->collisionZ = act->z;
+		act->pos.x = stream.readUint16LE();
+		act->collisionPos.x = act->pos.x;
+		act->pos.y = stream.readUint16LE();
+		act->collisionPos.y = act->pos.y;
+		act->pos.z = stream.readUint16LE();
+		act->collisionPos.z = act->pos.z;
 		act->strengthOfHit = stream.readByte();
 		setBonusParameterFlags(act, stream.readUint16LE());
 		act->angle = stream.readUint16LE();
@@ -350,7 +348,7 @@ bool Scene::loadSceneLBA1() {
 		act->bonusAmount = stream.readByte();
 		act->talkColor = stream.readByte();
 		act->armor = stream.readByte();
-		act->life = stream.readByte();
+		act->setLife(stream.readByte());
 
 		act->moveScriptSize = stream.readUint16LE();
 		act->moveScript = currentScene + stream.pos();
@@ -459,11 +457,18 @@ void Scene::changeScene() {
 	if (needChangeScene == LBA1SceneId::Citadel_Island_near_twinsens_house && _engine->_gameState->hasOpenedFunfrocksSafe()) {
 		needChangeScene = LBA1SceneId::Citadel_Island_Twinsens_house_destroyed;
 	}
-	debug(2, "Change scene to %i (currently in %i)", needChangeScene, currentSceneIdx);
 
 	// local backup previous scene
 	previousSceneIdx = currentSceneIdx;
 	currentSceneIdx = needChangeScene;
+
+	if (_engine->isLBA1() && currentSceneIdx >= LBA1SceneId::Citadel_Island_Prison && currentSceneIdx < LBA1SceneId::SceneIdMax) {
+		snprintf(_engine->_gameState->sceneName, sizeof(_engine->_gameState->sceneName), "%i %s", currentSceneIdx, _engine->_holomap->getLocationName(currentSceneIdx));
+	} else {
+		const char *pName = _engine->_gameState->playerName;
+		snprintf(_engine->_gameState->sceneName, sizeof(_engine->_gameState->sceneName), "%i %s", currentSceneIdx, pName);
+	}
+	debug(2, "Entering scene %s (came from %i)", _engine->_gameState->sceneName, previousSceneIdx);
 
 	if (needChangeScene == LBA1SceneId::Polar_Island_end_scene) {
 		_engine->unlockAchievement("LBA_ACH_001");
@@ -499,20 +504,16 @@ void Scene::changeScene() {
 	_engine->_grid->initGrid(needChangeScene);
 
 	if (heroPositionType == ScenePositionType::kZone) {
-		newHeroX = _zoneHeroX;
-		newHeroY = _zoneHeroY;
-		newHeroZ = _zoneHeroZ;
+		newHeroPos = _zoneHeroPos;
 	}
 
 	if (heroPositionType == ScenePositionType::kScene || heroPositionType == ScenePositionType::kNoPosition) {
-		newHeroX = _sceneHeroX;
-		newHeroY = _sceneHeroY;
-		newHeroZ = _sceneHeroZ;
+		newHeroPos = _sceneHeroPos;
 	}
 
-	sceneHero->x = newHeroX;
-	sceneHero->y = heroYBeforeFall = newHeroY;
-	sceneHero->z = newHeroZ;
+	sceneHero->pos.x = newHeroPos.x;
+	sceneHero->pos.y = heroYBeforeFall = newHeroPos.y;
+	sceneHero->pos.z = newHeroPos.z;
 
 	_engine->_renderer->setLightVector(alphaLight, betaLight, ANGLE_0);
 
@@ -534,9 +535,7 @@ void Scene::changeScene() {
 	_sampleAmbienceTime = 0;
 
 	ActorStruct *followedActor = getActor(currentlyFollowedActor);
-	_engine->_grid->newCameraX = followedActor->x / BRICK_SIZE;
-	_engine->_grid->newCameraY = followedActor->y / BRICK_HEIGHT;
-	_engine->_grid->newCameraZ = followedActor->z / BRICK_SIZE;
+	_engine->_grid->centerOnActor(followedActor);
 
 	_engine->_gameState->magicBallIdx = -1;
 	_engine->_movements->heroMoved = true;
@@ -633,7 +632,7 @@ void Scene::processZoneExtraBonus(ZoneStruct *zone) {
 	}
 
 	const int16 amount = zone->infoData.Bonus.amount;
-	const int32 angle = _engine->_movements->getAngleAndSetTargetActorDistance(ABS(zone->topRight.x + zone->bottomLeft.x) / 2, ABS(zone->topRight.z + zone->bottomLeft.z) / 2, sceneHero->x, sceneHero->z);
+	const int32 angle = _engine->_movements->getAngleAndSetTargetActorDistance(ABS(zone->topRight.x + zone->bottomLeft.x) / 2, ABS(zone->topRight.z + zone->bottomLeft.z) / 2, sceneHero->pos.x, sceneHero->pos.z);
 	const int32 index = _engine->_extra->addExtraBonus(ABS(zone->topRight.x + zone->bottomLeft.x) / 2, zone->topRight.y, ABS(zone->topRight.z + zone->bottomLeft.z) / 2, ANGLE_63, angle, bonusSprite, amount);
 
 	if (index != -1) {
@@ -645,9 +644,9 @@ void Scene::processZoneExtraBonus(ZoneStruct *zone) {
 void Scene::processActorZones(int32 actorIdx) {
 	ActorStruct *actor = &_sceneActors[actorIdx];
 
-	int32 currentX = actor->x;
-	int32 currentY = actor->y;
-	int32 currentZ = actor->z;
+	int32 currentX = actor->pos.x;
+	int32 currentY = actor->pos.y;
+	int32 currentZ = actor->pos.z;
 
 	actor->zone = -1;
 	int32 tmpCellingGrid = 0;
@@ -667,19 +666,19 @@ void Scene::processActorZones(int32 actorIdx) {
 			case ZoneType::kCube:
 				if (IS_HERO(actorIdx) && actor->life > 0) {
 					needChangeScene = zone->infoData.ChangeScene.newSceneIdx;
-					_zoneHeroX = actor->x - zone->bottomLeft.x + zone->infoData.ChangeScene.x;
-					_zoneHeroY = actor->y - zone->bottomLeft.y + zone->infoData.ChangeScene.y;
-					_zoneHeroZ = actor->z - zone->bottomLeft.z + zone->infoData.ChangeScene.z;
+					_zoneHeroPos.x = actor->pos.x - zone->bottomLeft.x + zone->infoData.ChangeScene.x;
+					_zoneHeroPos.y = actor->pos.y - zone->bottomLeft.y + zone->infoData.ChangeScene.y;
+					_zoneHeroPos.z = actor->pos.z - zone->bottomLeft.z + zone->infoData.ChangeScene.z;
 					heroPositionType = ScenePositionType::kZone;
 				}
 				break;
 			case ZoneType::kCamera:
 				if (currentlyFollowedActor == actorIdx && !_engine->_debugGrid->useFreeCamera) {
 					_engine->disableScreenRecenter = true;
-					if (_engine->_grid->newCameraX != zone->infoData.CameraView.x || _engine->_grid->newCameraY != zone->infoData.CameraView.y || _engine->_grid->newCameraZ != zone->infoData.CameraView.z) {
-						_engine->_grid->newCameraX = zone->infoData.CameraView.x;
-						_engine->_grid->newCameraY = zone->infoData.CameraView.y;
-						_engine->_grid->newCameraZ = zone->infoData.CameraView.z;
+					if (_engine->_grid->newCamera.x != zone->infoData.CameraView.x || _engine->_grid->newCamera.y != zone->infoData.CameraView.y || _engine->_grid->newCamera.z != zone->infoData.CameraView.z) {
+						_engine->_grid->newCamera.x = zone->infoData.CameraView.x;
+						_engine->_grid->newCamera.y = zone->infoData.CameraView.y;
+						_engine->_grid->newCamera.z = zone->infoData.CameraView.z;
 						_engine->_redraw->reqBgRedraw = true;
 					}
 				}
@@ -721,13 +720,13 @@ void Scene::processActorZones(int32 actorIdx) {
 			case ZoneType::kLadder:
 				if (IS_HERO(actorIdx) && _engine->_actor->heroBehaviour != HeroBehaviourType::kProtoPack && (actor->anim == AnimationTypes::kForward || actor->anim == AnimationTypes::kTopLadder || actor->anim == AnimationTypes::kClimbLadder)) {
 					_engine->_movements->rotateActor(actor->boudingBox.x.bottomLeft, actor->boudingBox.z.bottomLeft, actor->angle + ANGLE_360 + ANGLE_135);
-					_engine->_renderer->destX += _engine->_movements->processActorX;
-					_engine->_renderer->destZ += _engine->_movements->processActorZ;
+					_engine->_renderer->destPos.x += _engine->_movements->processActor.x;
+					_engine->_renderer->destPos.z += _engine->_movements->processActor.z;
 
-					if (_engine->_renderer->destX >= 0 && _engine->_renderer->destZ >= 0 && _engine->_renderer->destX <= 0x7E00 && _engine->_renderer->destZ <= 0x7E00) {
-						if (_engine->_grid->getBrickShape(_engine->_renderer->destX, actor->y + ANGLE_90, _engine->_renderer->destZ) != ShapeType::kNone) {
+					if (_engine->_renderer->destPos.x >= 0 && _engine->_renderer->destPos.z >= 0 && _engine->_renderer->destPos.x <= 0x7E00 && _engine->_renderer->destPos.z <= 0x7E00) {
+						if (_engine->_grid->getBrickShape(_engine->_renderer->destPos.x, actor->pos.y + ANGLE_90, _engine->_renderer->destPos.z) != ShapeType::kNone) {
 							currentActorInZone = true;
-							if (actor->y >= ABS(zone->bottomLeft.y + zone->topRight.y) / 2) {
+							if (actor->pos.y >= ABS(zone->bottomLeft.y + zone->topRight.y) / 2) {
 								_engine->_animations->initAnim(AnimationTypes::kTopLadder, kAnimationType_2, AnimationTypes::kStanding, actorIdx); // reached end of ladder
 							} else {
 								_engine->_animations->initAnim(AnimationTypes::kClimbLadder, kAnimationTypeLoop, AnimationTypes::kAnimInvalid, actorIdx); // go up in ladder

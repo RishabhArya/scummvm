@@ -137,9 +137,6 @@ void ReadConfigFromIniFile() {
 	// Control device
 	temp = config.readIntSetting("Controller Settings", "Device", 0);
 
-	// A call to this will validate the above setting
-	Poll_direct_input();
-
 	// Control method
 	temp = config.readIntSetting("Controller Settings", "Method", 0);
 
@@ -277,9 +274,7 @@ void Save_config_file() {
 			config.writeSetting("Movie Library", temp, tempBuff);
 		}
 	}
-	pxString filename = configFile;
-	filename.ConvertPath();
-	config.writeFile(filename.c_str());
+	// TODO: implement handling config manager
 }
 
 void InitEngine(const char *lpCmdLine) {
@@ -349,13 +344,6 @@ void InitEngine(const char *lpCmdLine) {
 
 		// set base mode of stub to gameScript processor
 		stub.Set_current_stub_mode(__game_script);
-
-		// are all resources present?
-		Common::SeekableReadStream *stream = openDiskFileForBinaryStreamRead("full.icb");
-		if (stream) {
-			px.pc_full_intall = TRUE8;
-			delete stream;
-		}
 	} else
 		stub.Set_current_stub_mode(__mission_and_console);
 

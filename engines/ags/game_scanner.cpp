@@ -27,12 +27,17 @@
 #include "ags/shared/util/multifilelib.h"
 #include "ags/shared/util/string.h"
 #include "ags/engine/main/game_file.h"
+#include "ags/globals.h"
 #include "common/config-manager.h"
 #include "common/file.h"
 #include "common/hashmap.h"
 #include "common/md5.h"
 
-#ifdef DYNAMIC_MODULES
+/**
+ * When detection is compiled dynamically, detection tables end up in detection plugin and
+ * engine cannot link to them so duplicate them in the engine in this case
+ */
+#ifndef DETECTION_STATIC
 #include "ags/detection_tables.h"
 #endif
 
@@ -40,7 +45,7 @@ namespace AGS3 {
 
 extern bool define_gamedata_location(const AGS::Shared::String &exe_path);
 extern bool engine_try_init_gamedata(AGS::Shared::String gamepak_path);
-extern GameSetupStruct game;
+
 
 void GameScanner::scan(const Common::String &startFolder) {
 	detectClashes();
@@ -142,13 +147,13 @@ void GameScanner::scanFile(const Common::String &filename) {
 		e._filename = fsNode.getName();
 		e._filename.toLowercase();
 		e._filesize = size;
-		e._gameName = game.gamename;
+		e._gameName = _GP(game).gamename;
 		e._id = convertGameNameToId(e._gameName);
 		e._md5 = md5;
 
 		_games.push_back(e);
 	}
-} 
+}
 
 Common::String GameScanner::convertGameNameToId(const Common::String &name) {
 	Common::String result;

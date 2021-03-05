@@ -25,7 +25,6 @@
  *
  */
 
-#include "engines/icb/common/px_rccommon.h"
 #include "engines/icb/common/ptr_util.h"
 #include "engines/icb/mission.h"
 #include "engines/icb/global_objects.h"
@@ -73,9 +72,8 @@ mcodeFunctionReturnCodes _game_session::fn_play_movie(int32 &, int32 *params) {
 void Init_play_movie(const char *param0, bool8 param1) {
 	// Stop all sounds occuring
 	PauseSounds();
-	g_TimerOn = FALSE8;
 
-	const cstr moviename = (const cstr)param0;
+	const char *moviename = (const char *)param0;
 
 	// Filename checking to help catch Jake's PSX restrictions
 	if (strlen(moviename) > 8)

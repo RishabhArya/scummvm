@@ -32,14 +32,6 @@
 
 namespace TwinE {
 
-#define NUM_GAME_FLAGS 255
-#define NUM_INVENTORY_ITEMS 28
-
-/**
- * This gameflag indicates that the inventory items are taken from Twinson because he went to jail
- */
-#define GAMEFLAG_INVENTORY_DISABLED 70
-
 enum InventoryItems {
 	kiHolomap = 0,
 	kiMagicBall = 1,
@@ -96,8 +88,10 @@ private:
 	 * LBA engine game flags to save quest states
 	 *
 	 * 0-27: inventory related
-	 * 28-199: story related
-	 * 200-255: video related
+	 * 28-158: story related
+	 * 159..199: unused
+	 * 200-219: video related
+	 * 220..255: unused
 	 *
 	 * 35: If 0, a zommed sequence of opening the ventilation shaft will be played when Twinsen escapes
 	 * his house after arresting Zoe. Set to 1 after the sequence (also if Twinsen is killed during the arrest).
@@ -193,7 +187,17 @@ public:
 
 	int16 setKeys(int16 value);
 	int16 setGas(int16 value);
+	int16 setLeafs(int16 value);
 	int16 setKashes(int16 value);
+	int16 setMagicPoints(int16 val);
+	int16 setLeafBoxes(int16 val);
+
+	void addGas(int16 value);
+	void addKeys(int16 val);
+	void addKashes(int16 val);
+	void addMagicPoints(int16 val);
+	void addLeafs(int16 val);
+	void addLeafBoxes(int16 val);
 
 	/** Its using FunFrock Sabre */
 	bool usingSabre = false;
@@ -206,7 +210,8 @@ public:
 
 	uint8 holomapFlags[NUM_LOCATIONS]; // GV14
 
-	char playerName[30];
+	char playerName[30] {};
+	char sceneName[30] {};
 
 	int32 gameChoices[10];  // inGameMenuData
 	int32 numChoices = 0;   // numOfOptionsInChoice

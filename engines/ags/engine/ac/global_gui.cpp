@@ -35,29 +35,30 @@
 #include "ags/shared/gui/guimain.h"
 #include "ags/engine/script/runtimescriptvalue.h"
 #include "ags/shared/util/string_compat.h"
+#include "ags/globals.h"
 
 namespace AGS3 {
 
 using namespace AGS::Shared;
 
-extern GameSetupStruct game;
-extern ScriptGUI *scrGui;
+
+
 
 int IsGUIOn(int guinum) {
-	if ((guinum < 0) || (guinum >= game.numgui))
+	if ((guinum < 0) || (guinum >= _GP(game).numgui))
 		quit("!IsGUIOn: invalid GUI number specified");
-	return (guis[guinum].IsDisplayed()) ? 1 : 0;
+	return (_GP(guis)[guinum].IsDisplayed()) ? 1 : 0;
 }
 
 // This is an internal script function, and is undocumented.
 // It is used by the editor's automatic macro generation.
 int FindGUIID(const char *GUIName) {
-	for (int ii = 0; ii < game.numgui; ii++) {
-		if (guis[ii].Name.IsEmpty())
+	for (int ii = 0; ii < _GP(game).numgui; ii++) {
+		if (_GP(guis)[ii].Name.IsEmpty())
 			continue;
-		if (strcmp(guis[ii].Name, GUIName) == 0)
+		if (strcmp(_GP(guis)[ii].Name, GUIName) == 0)
 			return ii;
-		if ((guis[ii].Name[0u] == 'g') && (ags_stricmp(guis[ii].Name.GetCStr() + 1, GUIName) == 0))
+		if ((_GP(guis)[ii].Name[0u] == 'g') && (ags_stricmp(_GP(guis)[ii].Name.GetCStr() + 1, GUIName) == 0))
 			return ii;
 	}
 	quit("FindGUIID: No matching GUI found: GUI may have been deleted");
@@ -65,118 +66,118 @@ int FindGUIID(const char *GUIName) {
 }
 
 void InterfaceOn(int ifn) {
-	if ((ifn < 0) | (ifn >= game.numgui))
+	if ((ifn < 0) | (ifn >= _GP(game).numgui))
 		quit("!GUIOn: invalid GUI specified");
 
 	EndSkippingUntilCharStops();
 
-	if (guis[ifn].IsVisible()) {
+	if (_GP(guis)[ifn].IsVisible()) {
 		debug_script_log("GUIOn(%d) ignored (already on)", ifn);
 		return;
 	}
 	guis_need_update = 1;
-	guis[ifn].SetVisible(true);
+	_GP(guis)[ifn].SetVisible(true);
 	debug_script_log("GUI %d turned on", ifn);
 	// modal interface
-	if (guis[ifn].PopupStyle == kGUIPopupModal) PauseGame();
+	if (_GP(guis)[ifn].PopupStyle == kGUIPopupModal) PauseGame();
 	// clear the cached mouse position
-	guis[ifn].OnControlPositionChanged();
-	guis[ifn].Poll();
+	_GP(guis)[ifn].OnControlPositionChanged();
+	_GP(guis)[ifn].Poll();
 }
 
 void InterfaceOff(int ifn) {
-	if ((ifn < 0) | (ifn >= game.numgui)) quit("!GUIOff: invalid GUI specified");
-	if (!guis[ifn].IsVisible()) {
+	if ((ifn < 0) | (ifn >= _GP(game).numgui)) quit("!GUIOff: invalid GUI specified");
+	if (!_GP(guis)[ifn].IsVisible()) {
 		debug_script_log("GUIOff(%d) ignored (already off)", ifn);
 		return;
 	}
 	debug_script_log("GUI %d turned off", ifn);
-	guis[ifn].SetVisible(false);
-	if (guis[ifn].MouseOverCtrl >= 0) {
+	_GP(guis)[ifn].SetVisible(false);
+	if (_GP(guis)[ifn].MouseOverCtrl >= 0) {
 		// Make sure that the overpic is turned off when the GUI goes off
-		guis[ifn].GetControl(guis[ifn].MouseOverCtrl)->OnMouseLeave();
-		guis[ifn].MouseOverCtrl = -1;
+		_GP(guis)[ifn].GetControl(_GP(guis)[ifn].MouseOverCtrl)->OnMouseLeave();
+		_GP(guis)[ifn].MouseOverCtrl = -1;
 	}
-	guis[ifn].OnControlPositionChanged();
+	_GP(guis)[ifn].OnControlPositionChanged();
 	guis_need_update = 1;
 	// modal interface
-	if (guis[ifn].PopupStyle == kGUIPopupModal) UnPauseGame();
+	if (_GP(guis)[ifn].PopupStyle == kGUIPopupModal) UnPauseGame();
 }
 
 void SetGUIObjectEnabled(int guin, int objn, int enabled) {
-	if ((guin < 0) || (guin >= game.numgui))
+	if ((guin < 0) || (guin >= _GP(game).numgui))
 		quit("!SetGUIObjectEnabled: invalid GUI number");
-	if ((objn < 0) || (objn >= guis[guin].GetControlCount()))
+	if ((objn < 0) || (objn >= _GP(guis)[guin].GetControlCount()))
 		quit("!SetGUIObjectEnabled: invalid object number");
 
-	GUIControl_SetEnabled(guis[guin].GetControl(objn), enabled);
+	GUIControl_SetEnabled(_GP(guis)[guin].GetControl(objn), enabled);
 }
 
 void SetGUIObjectPosition(int guin, int objn, int xx, int yy) {
-	if ((guin < 0) || (guin >= game.numgui))
+	if ((guin < 0) || (guin >= _GP(game).numgui))
 		quit("!SetGUIObjectPosition: invalid GUI number");
-	if ((objn < 0) || (objn >= guis[guin].GetControlCount()))
+	if ((objn < 0) || (objn >= _GP(guis)[guin].GetControlCount()))
 		quit("!SetGUIObjectPosition: invalid object number");
 
-	GUIControl_SetPosition(guis[guin].GetControl(objn), xx, yy);
+	GUIControl_SetPosition(_GP(guis)[guin].GetControl(objn), xx, yy);
 }
 
 void SetGUIPosition(int ifn, int xx, int yy) {
-	if ((ifn < 0) || (ifn >= game.numgui))
+	if ((ifn < 0) || (ifn >= _GP(game).numgui))
 		quit("!SetGUIPosition: invalid GUI number");
 
-	GUI_SetPosition(&scrGui[ifn], xx, yy);
+	GUI_SetPosition(&_G(scrGui)[ifn], xx, yy);
 }
 
 void SetGUIObjectSize(int ifn, int objn, int newwid, int newhit) {
-	if ((ifn < 0) || (ifn >= game.numgui))
+	if ((ifn < 0) || (ifn >= _GP(game).numgui))
 		quit("!SetGUIObjectSize: invalid GUI number");
 
-	if ((objn < 0) || (objn >= guis[ifn].GetControlCount()))
+	if ((objn < 0) || (objn >= _GP(guis)[ifn].GetControlCount()))
 		quit("!SetGUIObjectSize: invalid object number");
 
-	GUIControl_SetSize(guis[ifn].GetControl(objn), newwid, newhit);
+	GUIControl_SetSize(_GP(guis)[ifn].GetControl(objn), newwid, newhit);
 }
 
 void SetGUISize(int ifn, int widd, int hitt) {
-	if ((ifn < 0) || (ifn >= game.numgui))
+	if ((ifn < 0) || (ifn >= _GP(game).numgui))
 		quit("!SetGUISize: invalid GUI number");
 
-	GUI_SetSize(&scrGui[ifn], widd, hitt);
+	GUI_SetSize(&_G(scrGui)[ifn], widd, hitt);
 }
 
 void SetGUIZOrder(int guin, int z) {
-	if ((guin < 0) || (guin >= game.numgui))
+	if ((guin < 0) || (guin >= _GP(game).numgui))
 		quit("!SetGUIZOrder: invalid GUI number");
 
-	GUI_SetZOrder(&scrGui[guin], z);
+	GUI_SetZOrder(&_G(scrGui)[guin], z);
 }
 
 void SetGUIClickable(int guin, int clickable) {
-	if ((guin < 0) || (guin >= game.numgui))
+	if ((guin < 0) || (guin >= _GP(game).numgui))
 		quit("!SetGUIClickable: invalid GUI number");
 
-	GUI_SetClickable(&scrGui[guin], clickable);
+	GUI_SetClickable(&_G(scrGui)[guin], clickable);
 }
 
 // pass trans=0 for fully solid, trans=100 for fully transparent
 void SetGUITransparency(int ifn, int trans) {
-	if ((ifn < 0) | (ifn >= game.numgui))
+	if ((ifn < 0) | (ifn >= _GP(game).numgui))
 		quit("!SetGUITransparency: invalid GUI number");
 
-	GUI_SetTransparency(&scrGui[ifn], trans);
+	GUI_SetTransparency(&_G(scrGui)[ifn], trans);
 }
 
 void CentreGUI(int ifn) {
-	if ((ifn < 0) | (ifn >= game.numgui))
+	if ((ifn < 0) | (ifn >= _GP(game).numgui))
 		quit("!CentreGUI: invalid GUI number");
 
-	GUI_Centre(&scrGui[ifn]);
+	GUI_Centre(&_G(scrGui)[ifn]);
 }
 
 int GetTextWidth(const char *text, int fontnum) {
 	VALIDATE_STRING(text);
-	if ((fontnum < 0) || (fontnum >= game.numfonts))
+	if ((fontnum < 0) || (fontnum >= _GP(game).numfonts))
 		quit("!GetTextWidth: invalid font number.");
 
 	return game_to_data_coord(wgettextwidth_compensate(text, fontnum));
@@ -184,50 +185,50 @@ int GetTextWidth(const char *text, int fontnum) {
 
 int GetTextHeight(const char *text, int fontnum, int width) {
 	VALIDATE_STRING(text);
-	if ((fontnum < 0) || (fontnum >= game.numfonts))
+	if ((fontnum < 0) || (fontnum >= _GP(game).numfonts))
 		quit("!GetTextHeight: invalid font number.");
 
-	if (break_up_text_into_lines(text, Lines, data_to_game_coord(width), fontnum) == 0)
+	if (break_up_text_into_lines(text, _GP(fontLines), data_to_game_coord(width), fontnum) == 0)
 		return 0;
-	return game_to_data_coord(getheightoflines(fontnum, Lines.Count()));
+	return game_to_data_coord(getheightoflines(fontnum, _GP(fontLines).Count()));
 }
 
 int GetFontHeight(int fontnum) {
-	if ((fontnum < 0) || (fontnum >= game.numfonts))
+	if ((fontnum < 0) || (fontnum >= _GP(game).numfonts))
 		quit("!GetFontHeight: invalid font number.");
 	return game_to_data_coord(getfontheight_outlined(fontnum));
 }
 
 int GetFontLineSpacing(int fontnum) {
-	if ((fontnum < 0) || (fontnum >= game.numfonts))
+	if ((fontnum < 0) || (fontnum >= _GP(game).numfonts))
 		quit("!GetFontLineSpacing: invalid font number.");
 	return game_to_data_coord(getfontspacing_outlined(fontnum));
 }
 
 void SetGUIBackgroundPic(int guin, int slotn) {
-	if ((guin < 0) | (guin >= game.numgui))
+	if ((guin < 0) | (guin >= _GP(game).numgui))
 		quit("!SetGUIBackgroundPic: invalid GUI number");
 
-	GUI_SetBackgroundGraphic(&scrGui[guin], slotn);
+	GUI_SetBackgroundGraphic(&_G(scrGui)[guin], slotn);
 }
 
 void DisableInterface() {
-	play.disabled_user_interface++;
+	_GP(play).disabled_user_interface++;
 	guis_need_update = 1;
 	set_mouse_cursor(CURS_WAIT);
 }
 
 void EnableInterface() {
 	guis_need_update = 1;
-	play.disabled_user_interface--;
-	if (play.disabled_user_interface < 1) {
-		play.disabled_user_interface = 0;
+	_GP(play).disabled_user_interface--;
+	if (_GP(play).disabled_user_interface < 1) {
+		_GP(play).disabled_user_interface = 0;
 		set_default_cursor();
 	}
 }
 // Returns 1 if user interface is enabled, 0 if disabled
 int IsInterfaceEnabled() {
-	return (play.disabled_user_interface > 0) ? 0 : 1;
+	return (_GP(play).disabled_user_interface > 0) ? 0 : 1;
 }
 
 int GetGUIObjectAt(int xx, int yy) {
@@ -242,25 +243,25 @@ int GetGUIAt(int xx, int yy) {
 	data_to_game_coords(&xx, &yy);
 
 	int aa, ll;
-	for (ll = game.numgui - 1; ll >= 0; ll--) {
-		aa = play.gui_draw_order[ll];
-		if (guis[aa].IsInteractableAt(xx, yy))
+	for (ll = _GP(game).numgui - 1; ll >= 0; ll--) {
+		aa = _GP(play).gui_draw_order[ll];
+		if (_GP(guis)[aa].IsInteractableAt(xx, yy))
 			return aa;
 	}
 	return -1;
 }
 
 void SetTextWindowGUI(int guinum) {
-	if ((guinum < -1) | (guinum >= game.numgui))
+	if ((guinum < -1) | (guinum >= _GP(game).numgui))
 		quit("!SetTextWindowGUI: invalid GUI number");
 
 	if (guinum < 0);  // disable it
-	else if (!guis[guinum].IsTextWindow())
+	else if (!_GP(guis)[guinum].IsTextWindow())
 		quit("!SetTextWindowGUI: specified GUI is not a text window");
 
-	if (play.speech_textwindow_gui == game.options[OPT_TWCUSTOM])
-		play.speech_textwindow_gui = guinum;
-	game.options[OPT_TWCUSTOM] = guinum;
+	if (_GP(play).speech_textwindow_gui == _GP(game).options[OPT_TWCUSTOM])
+		_GP(play).speech_textwindow_gui = guinum;
+	_GP(game).options[OPT_TWCUSTOM] = guinum;
 }
 
 } // namespace AGS3

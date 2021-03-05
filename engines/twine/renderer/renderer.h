@@ -330,9 +330,7 @@ private:
 
 	// ---- variables ----
 
-	int32 baseTransPosX = 0; // setSomething2Var1
-	int32 baseTransPosY = 0; // setSomething2Var2
-	int32 baseTransPosZ = 0; // setSomething2Var3
+	Vec3 baseTransPos;
 
 	int32 cameraDepthOffset = 0; // cameraVar1
 	int32 cameraScaleY = 0; // cameraVar2
@@ -344,9 +342,7 @@ private:
 	int32 renderAngleY = 0; // _angleY
 	int32 renderAngleZ = 0; // _angleZ
 
-	int32 renderX = 0; // _X
-	int32 renderY = 0; // _Y
-	int32 renderZ = 0; // _Z
+	Vec3 renderPos;
 
 	// ---
 
@@ -361,6 +357,14 @@ private:
 	int32 _polyTabSize = 0;
 	int16 *_polyTab = nullptr;
 	int16 *_polyTab2 = nullptr;
+	int16* _holomap_polytab_1_1 = nullptr;
+	int16* _holomap_polytab_1_2 = nullptr;
+	int16* _holomap_polytab_1_3 = nullptr;
+	int16* _holomap_polytab_2_3 = nullptr;
+	int16* _holomap_polytab_2_2 = nullptr;
+	int16* _holomap_polytab_2_1 = nullptr;
+	int16* _holomap_polytab_1_2_ptr = nullptr;
+	int16* _holomap_polytab_1_3_ptr = nullptr;
 
 	bool isUsingOrthoProjection = false;
 
@@ -394,24 +398,11 @@ public:
 
 	void init(int32 w, int32 h);
 
-	int16 projPosXScreen = 0; // fullRedrawVar1
-	int16 projPosYScreen = 0; // fullRedrawVar2
-	int16 projPosZScreen = 0; // fullRedrawVar3
-	int16 projPosX = 0;
-	int16 projPosY = 0;
-	int16 projPosZ = 0;
-
-	int32 baseRotPosX = 0; // setSomething3Var12
-	int32 baseRotPosY = 0; // setSomething3Var14
-	int32 baseRotPosZ = 0; // setSomething3Var16
-
-	int32 orthoProjX = 0; // setSomethingVar1
-	int32 orthoProjY = 0; // setSomethingVar2
-	int32 orthoProjZ = 0; // setSomethingVar2
-
-	int32 destX = 0;
-	int32 destY = 0;
-	int32 destZ = 0;
+	Vec3 projPosScreen;
+	Vec3 projPos;
+	Vec3 baseRotPos;
+	Vec3 orthoProjPos;
+	Vec3 destPos;
 
 	const int16 *const shadeAngleTab3;
 
@@ -420,6 +411,10 @@ public:
 
 	static void prepareIsoModel(uint8 *bodyPtr);
 	void renderPolygons(const CmdRenderPolygon &polygon, Vertex *vertices);
+
+	inline int32 projectPositionOnScreen(const Vec3& pos) {
+		return projectPositionOnScreen(pos.x, pos.y, pos.z);
+	}
 
 	int32 projectPositionOnScreen(int32 cX, int32 cY, int32 cZ);
 	void setCameraPosition(int32 x, int32 y, int32 depthOffset, int32 scaleY, int32 scaleZ);
@@ -430,12 +425,18 @@ public:
 
 	bool renderIsoModel(int32 x, int32 y, int32 z, int32 angleX, int32 angleY, int32 angleZ, const uint8 *bodyPtr);
 
+	/**
+	 * @param angle A value of @c -1 means that the model is automatically rotated
+	 */
 	void renderBehaviourModel(int32 boxLeft, int32 boxTop, int32 boxRight, int32 boxBottom, int32 y, int32 angle, const uint8 *bodyPtr);
+	/**
+	 * @param angle A value of @c -1 means that the model is automatically rotated
+	 */
 	void renderBehaviourModel(const Common::Rect &rect, int32 y, int32 angle, const uint8 *bodyPtr);
 
 	void renderInventoryItem(int32 x, int32 y, const uint8 *bodyPtr, int32 angle, int32 param);
 
-	void renderHolomapVertices(const Vertex vertexCoordinates[3], const Vertex vertexCoordinates2[3]);
+	void renderHolomapVertices(const Vertex vertexCoordinates[3], const Vertex vertexAngles[3]);
 };
 
 } // namespace TwinE

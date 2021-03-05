@@ -35,27 +35,27 @@ namespace AGSGalaxySteam {
 
 class AGS2Client : public PluginBase {
 protected:
-	static bool IsAchievementAchieved(const ScriptMethodParams &params);
-	static bool SetAchievementAchieved(const ScriptMethodParams &params);
-	static bool ResetAchievement(const ScriptMethodParams &params);
-	static int GetIntStat(const ScriptMethodParams &params);
-	static int GetFloatStat(const ScriptMethodParams &params);
-	static int GetAverageRateStat(const ScriptMethodParams &params);
-	static int SetIntStat(const ScriptMethodParams &params);
-	static int SetFloatStat(const ScriptMethodParams &params);
-	static int UpdateAverageRateStat(const ScriptMethodParams &params);
-	static void ResetStatsAndAchievements(const ScriptMethodParams &params);
-	static int get_Initialized(const ScriptMethodParams &params);
-	static void get_CurrentLeaderboardName(const ScriptMethodParams &params);
-	static void RequestLeaderboard(const ScriptMethodParams &params);
-	static int UploadScore(const ScriptMethodParams &params);
-	static void geti_LeaderboardNames(const ScriptMethodParams &params);
-	static int geti_LeaderboardScores(const ScriptMethodParams &params);
-	static int get_LeaderboardCount(const ScriptMethodParams &params);
-	static void GetUserName(const ScriptMethodParams &params);
-	static void GetCurrentGameLanguage(const ScriptMethodParams &params);
-	static void FindLeaderboard(const ScriptMethodParams &params);
-	static int Initialize(const ScriptMethodParams &params);
+	static void IsAchievementAchieved(ScriptMethodParams &params);
+	static void SetAchievementAchieved(ScriptMethodParams &params);
+	static void ResetAchievement(ScriptMethodParams &params);
+	static void GetIntStat(ScriptMethodParams &params);
+	static void GetFloatStat(ScriptMethodParams &params);
+	static void GetAverageRateStat(ScriptMethodParams &params);
+	static void SetIntStat(ScriptMethodParams &params);
+	static void SetFloatStat(ScriptMethodParams &params);
+	static void UpdateAverageRateStat(ScriptMethodParams &params);
+	static void ResetStatsAndAchievements(ScriptMethodParams &params);
+	static void get_Initialized(ScriptMethodParams &params);
+	static void get_CurrentLeaderboardName(ScriptMethodParams &params);
+	static void RequestLeaderboard(ScriptMethodParams &params);
+	static void UploadScore(ScriptMethodParams &params);
+	static void geti_LeaderboardNames(ScriptMethodParams &params);
+	static void geti_LeaderboardScores(ScriptMethodParams &params);
+	static void get_LeaderboardCount(ScriptMethodParams &params);
+	static void GetUserName(ScriptMethodParams &params);
+	static void GetCurrentGameLanguage(ScriptMethodParams &params);
+	static void FindLeaderboard(ScriptMethodParams &params);
+	static void Initialize(ScriptMethodParams &params);
 
 protected:
 	static void AGS_EngineStartup(IAGSEngine *engine);
@@ -69,26 +69,26 @@ private:
 	static const char *AGS_GetPluginName();
 	static void AGS_EngineStartup(IAGSEngine *engine);
 
-	static bool IsAchievementAchieved(const ScriptMethodParams &params);
-	static bool SetAchievementAchieved(const ScriptMethodParams &params);
-	static bool ResetAchievement(const ScriptMethodParams &params);
-	static int GetIntStat(const ScriptMethodParams &params);
-	static int GetFloatStat(const ScriptMethodParams &params);
-	static int GetAverageRateStat(const ScriptMethodParams &params);
-	static int SetIntStat(const ScriptMethodParams &params);
-	static int SetFloatStat(const ScriptMethodParams &params);
-	static int UpdateAverageRateStat(const ScriptMethodParams &params);
-	static void ResetStatsAndAchievements(const ScriptMethodParams &params);
-	static int get_Initialized(const ScriptMethodParams &params);
-	static void get_CurrentLeaderboardName(const ScriptMethodParams &params);
-	static void RequestLeaderboard(const ScriptMethodParams &params);
-	static int UploadScore(const ScriptMethodParams &params);
-	static void geti_LeaderboardNames(const ScriptMethodParams &params);
-	static int geti_LeaderboardScores(const ScriptMethodParams &params);
-	static int get_LeaderboardCount(const ScriptMethodParams &params);
-	static void GetUserName(const ScriptMethodParams &params);
-	static void GetCurrentGameLanguage(const ScriptMethodParams &params);
-	static int Initialize(const ScriptMethodParams &params);
+	static void IsAchievementAchieved(ScriptMethodParams &params);
+	static void SetAchievementAchieved(ScriptMethodParams &params);
+	static void ResetAchievement(ScriptMethodParams &params);
+	static void GetIntStat(ScriptMethodParams &params);
+	static void GetFloatStat(ScriptMethodParams &params);
+	static void GetAverageRateStat(ScriptMethodParams &params);
+	static void SetIntStat(ScriptMethodParams &params);
+	static void SetFloatStat(ScriptMethodParams &params);
+	static void UpdateAverageRateStat(ScriptMethodParams &params);
+	static void ResetStatsAndAchievements(ScriptMethodParams &params);
+	static void get_Initialized(ScriptMethodParams &params);
+	static void get_CurrentLeaderboardName(ScriptMethodParams &params);
+	static void RequestLeaderboard(ScriptMethodParams &params);
+	static void UploadScore(ScriptMethodParams &params);
+	static void geti_LeaderboardNames(ScriptMethodParams &params);
+	static void geti_LeaderboardScores(ScriptMethodParams &params);
+	static void get_LeaderboardCount(ScriptMethodParams &params);
+	static void GetUserName(ScriptMethodParams &params);
+	static void GetCurrentGameLanguage(ScriptMethodParams &params);
+	static void Initialize(ScriptMethodParams &params);
 
 public:
 	AGSGalaxy();
@@ -101,26 +101,26 @@ private:
 protected:
 	static void AGS_EngineStartup(IAGSEngine *engine);
 
-	static bool IsAchievementAchieved(const ScriptMethodParams &params);
-	static bool SetAchievementAchieved(const ScriptMethodParams &params);
-	static bool ResetAchievement(const ScriptMethodParams &params);
-	static int GetIntStat(const ScriptMethodParams &params);
-	static int GetFloatStat(const ScriptMethodParams &params);
-	static int GetAverageRateStat(const ScriptMethodParams &params);
-	static int SetIntStat(const ScriptMethodParams &params);
-	static int SetFloatStat(const ScriptMethodParams &params);
-	static int UpdateAverageRateStat(const ScriptMethodParams &params);
-	static void ResetStatsAndAchievements(const ScriptMethodParams &params);
-	static int get_Initialized(const ScriptMethodParams &params);
-	static void get_CurrentLeaderboardName(const ScriptMethodParams &params);
-	static void RequestLeaderboard(const ScriptMethodParams &params);
-	static int UploadScore(const ScriptMethodParams &params);
-	static void geti_LeaderboardNames(const ScriptMethodParams &params);
-	static int geti_LeaderboardScores(const ScriptMethodParams &params);
-	static int get_LeaderboardCount(const ScriptMethodParams &params);
-	static void GetUserName(const ScriptMethodParams &params);
-	static void GetCurrentGameLanguage(const ScriptMethodParams &params);
-	static int FindLeaderboard(const ScriptMethodParams &params);
+	static void IsAchievementAchieved(ScriptMethodParams &params);
+	static void SetAchievementAchieved(ScriptMethodParams &params);
+	static void ResetAchievement(ScriptMethodParams &params);
+	static void GetIntStat(ScriptMethodParams &params);
+	static void GetFloatStat(ScriptMethodParams &params);
+	static void GetAverageRateStat(ScriptMethodParams &params);
+	static void SetIntStat(ScriptMethodParams &params);
+	static void SetFloatStat(ScriptMethodParams &params);
+	static void UpdateAverageRateStat(ScriptMethodParams &params);
+	static void ResetStatsAndAchievements(ScriptMethodParams &params);
+	static void get_Initialized(ScriptMethodParams &params);
+	static void get_CurrentLeaderboardName(ScriptMethodParams &params);
+	static void RequestLeaderboard(ScriptMethodParams &params);
+	static void UploadScore(ScriptMethodParams &params);
+	static void geti_LeaderboardNames(ScriptMethodParams &params);
+	static void geti_LeaderboardScores(ScriptMethodParams &params);
+	static void get_LeaderboardCount(ScriptMethodParams &params);
+	static void GetUserName(ScriptMethodParams &params);
+	static void GetCurrentGameLanguage(ScriptMethodParams &params);
+	static void FindLeaderboard(ScriptMethodParams &params);
 
 public:
 	AGSSteam();

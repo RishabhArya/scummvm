@@ -194,21 +194,13 @@ public:
 	/**
 	 * search down until either ground is found or lower border of the cube is reached
 	 */
-	const uint8 *getBlockBufferGround(int32 x, int32 y, int32 z, int16 &ground) const;
+	const uint8 *getBlockBufferGround(int32 x, int32 y, int32 z, int32 &ground);
 
-	/** New grid camera X coordinates */
-	int32 newCameraX = 0;
-	/** New grid camera Y coordinates */
-	int32 newCameraY = 0;
-	/** New grid camera Z coordinates */
-	int32 newCameraZ = 0;
+	/** New grid camera x, y and z coordinates */
+	Vec3 newCamera;
 
-	/** Current grid camera X coordinates */
-	int32 cameraX = 0;
-	/** Current grid camera Y coordinates */
-	int32 cameraY = 0;
-	/** Current grid camera Z coordinates */
-	int32 cameraZ = 0;
+	/** Current grid camera x, y and z coordinates */
+	Vec3 camera;
 
 	/** Flag to know if the engine is using celling grids */
 	int16 useCellingGrid = 0; // useAnotherGrm
@@ -240,13 +232,17 @@ public:
 	 */
 	void getSpriteSize(int32 offset, int32 *width, int32 *height, const uint8 *spritePtr);
 
+	/** recenter screen on followed actor automatically */
+	void centerScreenOnActor();
+	void centerOnActor(const ActorStruct* actor);
+
 	/**
 	 * Draw brick sprite in the screen
 	 * @param index brick index to draw
 	 * @param posX brick X position to draw
 	 * @param posY brick Y position to draw
 	 */
-	void drawBrick(int32 index, int32 posX, int32 posY);
+	bool drawBrick(int32 index, int32 posX, int32 posY);
 
 	/**
 	 * Draw sprite in the screen
@@ -255,8 +251,8 @@ public:
 	 * @param posY sprite Y position to draw
 	 * @param ptr sprite buffer pointer to draw
 	 */
-	void drawSprite(int32 index, int32 posX, int32 posY, const uint8 *spritePtr);
-	void drawSprite(int32 posX, int32 posY, const SpriteData &ptr);
+	bool drawSprite(int32 index, int32 posX, int32 posY, const uint8 *spritePtr);
+	bool drawSprite(int32 posX, int32 posY, const SpriteData &ptr);
 
 	/**
 	 * Draw sprite or bricks in the screen according with the type
@@ -266,7 +262,7 @@ public:
 	 * @param ptr sprite buffer pointer to draw
 	 * @param isSprite allows to identify if the sprite to display is brick or a single sprite
 	 */
-	void drawBrickSprite(int32 index, int32 posX, int32 posY, const uint8 *spritePtr, bool isSprite);
+	bool drawBrickSprite(int32 index, int32 posX, int32 posY, const uint8 *spritePtr, bool isSprite);
 
 	/**
 	 * Get block library

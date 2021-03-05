@@ -157,11 +157,11 @@ static int32 processLifeConditions(TwinEEngine *engine, LifeScriptContext &ctx) 
 		conditionValueSize = 2;
 		ActorStruct *otherActor = engine->_scene->getActor(actorIdx);
 		if (!otherActor->dynamicFlags.bIsDead) {
-			if (ABS(ctx.actor->y - otherActor->y) >= 1500) {
+			if (ABS(ctx.actor->pos.y - otherActor->pos.y) >= 1500) {
 				engine->_scene->currentScriptValue = MAX_TARGET_ACTOR_DISTANCE;
 			} else {
 				// Returns int32, so we check for integer overflow
-				int32 distance = engine->_movements->getDistance2D(ctx.actor->x, ctx.actor->z, otherActor->x, otherActor->z);
+				int32 distance = engine->_movements->getDistance2D(ctx.actor->pos, otherActor->pos);
 				if (ABS(distance) > MAX_TARGET_ACTOR_DISTANCE) {
 					engine->_scene->currentScriptValue = MAX_TARGET_ACTOR_DISTANCE;
 				} else {
@@ -218,8 +218,8 @@ static int32 processLifeConditions(TwinEEngine *engine, LifeScriptContext &ctx) 
 		conditionValueSize = 2;
 
 		if (!targetActor->dynamicFlags.bIsDead) {
-			if (ABS(targetActor->y - ctx.actor->y) < 1500) {
-				newAngle = engine->_movements->getAngleAndSetTargetActorDistance(ctx.actor->x, ctx.actor->z, targetActor->x, targetActor->z);
+			if (ABS(targetActor->pos.y - ctx.actor->pos.y) < 1500) {
+				newAngle = engine->_movements->getAngleAndSetTargetActorDistance(ctx.actor->pos, targetActor->pos);
 				if (ABS(engine->_movements->targetActorDistance) > MAX_TARGET_ACTOR_DISTANCE) {
 					engine->_movements->targetActorDistance = MAX_TARGET_ACTOR_DISTANCE;
 				}
@@ -306,7 +306,7 @@ static int32 processLifeConditions(TwinEEngine *engine, LifeScriptContext &ctx) 
 
 		if (!targetActor->dynamicFlags.bIsDead) {
 			// Returns int32, so we check for integer overflow
-			int32 distance = engine->_movements->getDistance3D(ctx.actor->x, ctx.actor->y, ctx.actor->z, targetActor->x, targetActor->y, targetActor->z);
+			int32 distance = engine->_movements->getDistance3D(ctx.actor->pos, targetActor->pos);
 			if (ABS(distance) > MAX_TARGET_ACTOR_DISTANCE) {
 				engine->_scene->currentScriptValue = MAX_TARGET_ACTOR_DISTANCE;
 			} else {
@@ -712,12 +712,8 @@ static int32 lCAM_FOLLOW(TwinEEngine *engine, LifeScriptContext &ctx) {
 
 	if (engine->_scene->currentlyFollowedActor != followedActorIdx) {
 		const ActorStruct *followedActor = engine->_scene->getActor(followedActorIdx);
-		engine->_grid->newCameraX = followedActor->x / BRICK_SIZE;
-		engine->_grid->newCameraY = followedActor->y / BRICK_HEIGHT;
-		engine->_grid->newCameraZ = followedActor->z / BRICK_SIZE;
-
+		engine->_grid->centerOnActor(followedActor);
 		engine->_scene->currentlyFollowedActor = followedActorIdx;
-		engine->_redraw->reqBgRedraw = true;
 	}
 
 	return 0;
@@ -808,7 +804,7 @@ static int32 lKILL_OBJ(TwinEEngine *engine, LifeScriptContext &ctx) {
 	otherActor->dynamicFlags.bIsDead = 1;
 	otherActor->entity = -1;
 	otherActor->zone = -1;
-	otherActor->life = 0;
+	otherActor->setLife(0);
 
 	return 0;
 }
@@ -822,7 +818,7 @@ static int32 lSUICIDE(TwinEEngine *engine, LifeScriptContext &ctx) {
 	ctx.actor->dynamicFlags.bIsDead = 1;
 	ctx.actor->entity = -1;
 	ctx.actor->zone = -1;
-	ctx.actor->life = 0;
+	ctx.actor->setLife(0);
 
 	return 0;
 }
@@ -832,12 +828,7 @@ static int32 lSUICIDE(TwinEEngine *engine, LifeScriptContext &ctx) {
  * @note Opcode @c 0x27
  */
 static int32 lUSE_ONE_LITTLE_KEY(TwinEEngine *engine, LifeScriptContext &ctx) {
-	engine->_gameState->inventoryNumKeys--;
-
-	if (engine->_gameState->inventoryNumKeys < 0) {
-		engine->_gameState->inventoryNumKeys = 0;
-	}
-
+	engine->_gameState->addKeys(-1);
 	engine->_redraw->addOverlay(OverlayType::koSprite, SPRITEHQR_KEY, 0, 0, 0, OverlayPosType::koFollowActor, 1);
 
 	return 0;
@@ -852,10 +843,7 @@ static int32 lGIVE_GOLD_PIECES(TwinEEngine *engine, LifeScriptContext &ctx) {
 	bool hideRange = false;
 	int16 kashes = ctx.stream.readSint16LE();
 
-	engine->_gameState->inventoryNumKashes -= kashes;
-	if (engine->_gameState->inventoryNumKashes < 0) {
-		engine->_gameState->inventoryNumKashes = 0;
-	}
+	engine->_gameState->addKashes(-kashes);
 
 	engine->_redraw->addOverlay(OverlayType::koSprite, SPRITEHQR_KASHES, 10, 15, 0, OverlayPosType::koNormal, 3);
 
@@ -942,9 +930,7 @@ static int32 lINC_CHAPTER(TwinEEngine *engine, LifeScriptContext &ctx) {
 static int32 lFOUND_OBJECT(TwinEEngine *engine, LifeScriptContext &ctx) {
 	const int32 item = ctx.stream.readByte();
 
-	engine->freezeTime();
 	engine->_gameState->processFoundItem(item);
-	engine->unfreezeTime();
 	engine->_redraw->redrawEngineActions(true);
 
 	return 0;
@@ -958,7 +944,7 @@ static int32 lSET_DOOR_LEFT(TwinEEngine *engine, LifeScriptContext &ctx) {
 	int32 distance = ctx.stream.readSint16LE();
 
 	ctx.actor->angle = ANGLE_270;
-	ctx.actor->x = ctx.actor->lastX - distance;
+	ctx.actor->pos.x = ctx.actor->lastPos.x - distance;
 	ctx.actor->dynamicFlags.bIsSpriteMoving = 0;
 	ctx.actor->speed = 0;
 
@@ -973,7 +959,7 @@ static int32 lSET_DOOR_RIGHT(TwinEEngine *engine, LifeScriptContext &ctx) {
 	int32 distance = ctx.stream.readSint16LE();
 
 	ctx.actor->angle = ANGLE_90;
-	ctx.actor->x = ctx.actor->lastX + distance;
+	ctx.actor->pos.x = ctx.actor->lastPos.x + distance;
 	ctx.actor->dynamicFlags.bIsSpriteMoving = 0;
 	ctx.actor->speed = 0;
 
@@ -988,7 +974,7 @@ static int32 lSET_DOOR_UP(TwinEEngine *engine, LifeScriptContext &ctx) {
 	int32 distance = ctx.stream.readSint16LE();
 
 	ctx.actor->angle = ANGLE_180;
-	ctx.actor->z = ctx.actor->lastZ - distance;
+	ctx.actor->pos.z = ctx.actor->lastPos.z - distance;
 	ctx.actor->dynamicFlags.bIsSpriteMoving = 0;
 	ctx.actor->speed = 0;
 
@@ -1003,7 +989,7 @@ static int32 lSET_DOOR_DOWN(TwinEEngine *engine, LifeScriptContext &ctx) {
 	int32 distance = ctx.stream.readSint16LE();
 
 	ctx.actor->angle = ANGLE_0;
-	ctx.actor->z = ctx.actor->lastZ + distance;
+	ctx.actor->pos.z = ctx.actor->lastPos.z + distance;
 	ctx.actor->dynamicFlags.bIsSpriteMoving = 0;
 	ctx.actor->speed = 0;
 
@@ -1127,13 +1113,13 @@ static int32 lPOS_POINT(TwinEEngine *engine, LifeScriptContext &ctx) {
 	int32 trackIdx = ctx.stream.readByte();
 
 	const ScenePoint &sp = engine->_scene->sceneTracks[trackIdx];
-	engine->_renderer->destX = sp.x;
-	engine->_renderer->destY = sp.y;
-	engine->_renderer->destZ = sp.z;
+	engine->_renderer->destPos.x = sp.x;
+	engine->_renderer->destPos.y = sp.y;
+	engine->_renderer->destPos.z = sp.z;
 
-	ctx.actor->x = sp.x;
-	ctx.actor->y = sp.y;
-	ctx.actor->z = sp.z;
+	ctx.actor->pos.x = sp.x;
+	ctx.actor->pos.y = sp.y;
+	ctx.actor->pos.z = sp.z;
 
 	return 0;
 }
@@ -1168,7 +1154,7 @@ static int32 lSET_LIFE_POINT_OBJ(TwinEEngine *engine, LifeScriptContext &ctx) {
 	int32 otherActorIdx = ctx.stream.readByte();
 	static int32 lifeValue = ctx.stream.readByte();
 
-	engine->_scene->getActor(otherActorIdx)->life = lifeValue;
+	engine->_scene->getActor(otherActorIdx)->setLife(lifeValue);
 
 	return 0;
 }
@@ -1182,10 +1168,9 @@ static int32 lSUB_LIFE_POINT_OBJ(TwinEEngine *engine, LifeScriptContext &ctx) {
 	static int32 lifeValue = ctx.stream.readByte();
 
 	ActorStruct *otherActor = engine->_scene->getActor(otherActorIdx);
-	otherActor->life -= lifeValue;
-
+	otherActor->addLife(-lifeValue);
 	if (otherActor->life < 0) {
-		otherActor->life = 0;
+		otherActor->setLife(0);
 	}
 
 	return 0;
@@ -1243,12 +1228,7 @@ static int32 lPLAY_MIDI(TwinEEngine *engine, LifeScriptContext &ctx) {
  * @note Opcode @c 0x42
  */
 static int32 lINC_CLOVER_BOX(TwinEEngine *engine, LifeScriptContext &ctx) {
-	if (engine->_gameState->inventoryNumLeafsBox < 10) {
-		engine->_gameState->inventoryNumLeafsBox++;
-		if (engine->_gameState->inventoryNumLeafsBox == 5) {
-			engine->unlockAchievement("LBA_ACH_003");
-		}
-	}
+	engine->_gameState->addLeafBoxes(1);
 	return 0;
 }
 
@@ -1355,10 +1335,7 @@ static int32 lCLR_HOLO_POS(TwinEEngine *engine, LifeScriptContext &ctx) {
  * @note Opcode @c 0x4A
  */
 static int32 lADD_FUEL(TwinEEngine *engine, LifeScriptContext &ctx) {
-	engine->_gameState->inventoryNumGas += ctx.stream.readByte();
-	if (engine->_gameState->inventoryNumGas > 100) {
-		engine->_gameState->inventoryNumGas = 100;
-	}
+	engine->_gameState->addGas(ctx.stream.readByte());
 	return 0;
 }
 
@@ -1367,10 +1344,7 @@ static int32 lADD_FUEL(TwinEEngine *engine, LifeScriptContext &ctx) {
  * @note Opcode @c 0x4B
  */
 static int32 lSUB_FUEL(TwinEEngine *engine, LifeScriptContext &ctx) {
-	engine->_gameState->inventoryNumGas -= ctx.stream.readByte();
-	if (engine->_gameState->inventoryNumGas < 0) {
-		engine->_gameState->inventoryNumGas = 0;
-	}
+	engine->_gameState->addGas(-(int16)ctx.stream.readByte());
 	return 0;
 }
 
@@ -1420,7 +1394,7 @@ static int32 lSAY_MESSAGE_OBJ(TwinEEngine *engine, LifeScriptContext &ctx) {
  * @note Opcode @c 0x4F
  */
 static int32 lFULL_POINT(TwinEEngine *engine, LifeScriptContext &ctx) {
-	engine->_scene->sceneHero->life = 50;
+	engine->_scene->sceneHero->setLife(kActorMaxLife);
 	engine->_gameState->inventoryMagicPoints = engine->_gameState->magicLevelIdx * 20;
 	return 0;
 }
@@ -1533,7 +1507,7 @@ static int32 lEXPLODE_OBJ(TwinEEngine *engine, LifeScriptContext &ctx) {
 	int32 otherActorIdx = ctx.stream.readByte();
 	ActorStruct *otherActor = engine->_scene->getActor(otherActorIdx);
 
-	engine->_extra->addExtraExplode(otherActor->x, otherActor->y, otherActor->z); // RECHECK this
+	engine->_extra->addExtraExplode(otherActor->pos.x, otherActor->pos.y, otherActor->pos.z); // RECHECK this
 
 	return 0;
 }
@@ -1587,6 +1561,7 @@ static int32 lSET_DARK_PAL(TwinEEngine *engine, LifeScriptContext &ctx) {
 	if (!engine->_screens->lockPalette) {
 		engine->_screens->convertPalToRGBA(engine->_screens->palette, engine->_screens->paletteRGBA);
 		engine->setPalette(engine->_screens->paletteRGBA);
+		engine->flip();
 	}
 	engine->_screens->useAlternatePalette = true;
 	return 0;
@@ -1600,6 +1575,7 @@ static int32 lSET_NORMAL_PAL(TwinEEngine *engine, LifeScriptContext &ctx) {
 	engine->_screens->useAlternatePalette = false;
 	if (!engine->_screens->lockPalette) {
 		engine->setPalette(engine->_screens->mainPaletteRGBA);
+		engine->flip();
 	}
 	return 0;
 }
@@ -1624,6 +1600,7 @@ static int32 lMESSAGE_SENDELL(TwinEEngine *engine, LifeScriptContext &ctx) {
 	engine->_screens->fadeToBlack(engine->_screens->paletteRGBACustom);
 	engine->_screens->clearScreen();
 	engine->setPalette(engine->_screens->paletteRGBA);
+	engine->flip();
 	return 0;
 }
 
@@ -1656,8 +1633,8 @@ static int32 lHOLOMAP_TRAJ(TwinEEngine *engine, LifeScriptContext &ctx) {
  */
 static int32 lGAME_OVER(TwinEEngine *engine, LifeScriptContext &ctx) {
 	engine->_scene->sceneHero->dynamicFlags.bAnimEnded = 1;
-	engine->_scene->sceneHero->life = 0;
-	engine->_gameState->inventoryNumLeafs = 0;
+	engine->_scene->sceneHero->setLife(0);
+	engine->_gameState->setLeafs(0);
 	return 1; // break
 }
 
@@ -1667,12 +1644,12 @@ static int32 lGAME_OVER(TwinEEngine *engine, LifeScriptContext &ctx) {
  */
 static int32 lTHE_END(TwinEEngine *engine, LifeScriptContext &ctx) {
 	engine->quitGame = 1;
-	engine->_gameState->inventoryNumLeafs = 0;
-	engine->_scene->sceneHero->life = 50;
-	engine->_gameState->inventoryMagicPoints = 80;
+	engine->_gameState->setLeafs(0);
+	engine->_scene->sceneHero->setLife(kActorMaxLife);
+	engine->_gameState->setMagicPoints(80);
 	engine->_scene->currentSceneIdx = LBA1SceneId::Polar_Island_Final_Battle;
 	engine->_actor->heroBehaviour = engine->_actor->previousHeroBehaviour;
-	engine->_scene->newHeroX = -1;
+	engine->_scene->newHeroPos.x = -1;
 	engine->_scene->sceneHero->angle = engine->_actor->previousHeroAngle;
 	engine->autoSave();
 	return 1; // break;

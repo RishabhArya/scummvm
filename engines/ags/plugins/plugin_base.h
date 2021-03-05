@@ -32,8 +32,8 @@ namespace AGS3 {
 namespace Plugins {
 
 #define DLL_METHOD(NAME) _methods[#NAME] = (void *)&NAME
-#define SCRIPT_METHOD(NAME) engine->RegisterScriptFunction(#NAME, (void *)&NAME)
-#define SCRIPT_METHOD_EXT(NAME, PROC) engine->RegisterScriptFunction(#NAME, (void *)&(PROC))
+#define SCRIPT_METHOD(NAME) registerFunction(engine, #NAME, &NAME)
+#define SCRIPT_METHOD_EXT(NAME, PROC) registerFunction(engine, #NAME, &(PROC))
 
 #define PARAMS1(T1, N1) \
 	T1 N1 = (T1)params[0]
@@ -79,10 +79,22 @@ namespace Plugins {
 	T6 N6 = (T6)params[5]; \
 	T7 N7 = (T7)params[6]; \
 	T8 N8 = (T8)params[7]
+#define PARAMS9(T1, N1, T2, N2, T3, N3, T4, N4, T5, N5, T6, N6, T7, N7, T8, N8, T9, N9) \
+	T1 N1 = (T1)params[0]; \
+	T2 N2 = (T2)params[1]; \
+	T3 N3 = (T3)params[2]; \
+	T4 N4 = (T4)params[3]; \
+	T5 N5 = (T5)params[4]; \
+	T6 N6 = (T6)params[5]; \
+	T7 N7 = (T7)params[6]; \
+	T8 N8 = (T8)params[7]; \
+	T9 N9 = (T9)params[8]
 
 
 using string = const char *;
 typedef uint32 HWND;
+
+typedef void (*PluginMethod)(ScriptMethodParams &params);
 
 /**
  * Base class for the implementation of AGS plugins
@@ -101,9 +113,13 @@ protected:
 	static void   AGS_EditorLoadGame(char *, int);
 	static void   AGS_EngineStartup(IAGSEngine *);
 	static void   AGS_EngineShutdown();
-	static NumberPtr AGS_EngineOnEvent(int, NumberPtr);
+	static int64 AGS_EngineOnEvent(int, NumberPtr);
 	static int    AGS_EngineDebugHook(const char *, int, int);
 	static void   AGS_EngineInitGfx(const char *driverID, void *data);
+
+	static inline void registerFunction(IAGSEngine *engine, const char *name, PluginMethod fn) {
+		engine->RegisterScriptFunction(name, (void *)fn);
+	}
 public:
 	PluginBase();
 

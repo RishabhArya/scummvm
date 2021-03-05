@@ -42,23 +42,23 @@
 #include "ags/engine/script/runtimescriptvalue.h"
 #include "ags/shared/gfx/gfx_def.h"
 #include "ags/engine/gfx/gfx_util.h"
-
 #include "ags/shared/debugging/out.h"
 #include "ags/engine/script/script_api.h"
 #include "ags/engine/script/script_runtime.h"
+#include "ags/globals.h"
 
 namespace AGS3 {
 
 using namespace AGS::Shared;
 using namespace AGS::Engine;
 
-extern GameSetupStruct game;
-extern GameState play;
+
+
 extern RoomStatus *croom;
 extern RoomObject *objs;
-extern CharacterCache *charcache;
-extern ObjectCache objcache[MAX_ROOM_OBJECTS];
-extern SpriteCache spriteset;
+
+
+
 extern Bitmap *dynamicallyCreatedSurfaces[MAX_DYNAMIC_SURFACES];
 
 // ** SCRIPT DRAWINGSURFACE OBJECT
@@ -66,11 +66,11 @@ extern Bitmap *dynamicallyCreatedSurfaces[MAX_DYNAMIC_SURFACES];
 void DrawingSurface_Release(ScriptDrawingSurface *sds) {
 	if (sds->roomBackgroundNumber >= 0) {
 		if (sds->modified) {
-			if (sds->roomBackgroundNumber == play.bg_frame) {
+			if (sds->roomBackgroundNumber == _GP(play).bg_frame) {
 				invalidate_screen();
 				mark_current_background_dirty();
 			}
-			play.raw_modified[sds->roomBackgroundNumber] = 1;
+			_GP(play).raw_modified[sds->roomBackgroundNumber] = 1;
 		}
 
 		sds->roomBackgroundNumber = -1;
@@ -88,16 +88,16 @@ void DrawingSurface_Release(ScriptDrawingSurface *sds) {
 			if (croom != nullptr) {
 				for (tt = 0; tt < croom->numobj; tt++) {
 					if (objs[tt].num == sds->dynamicSpriteNumber)
-						objcache[tt].sppic = -31999;
+						_G(objcache)[tt].sppic = -31999;
 				}
 			}
-			for (tt = 0; tt < game.numcharacters; tt++) {
-				if (charcache[tt].sppic == sds->dynamicSpriteNumber)
-					charcache[tt].sppic = -31999;
+			for (tt = 0; tt < _GP(game).numcharacters; tt++) {
+				if (_G(charcache)[tt].sppic == sds->dynamicSpriteNumber)
+					_G(charcache)[tt].sppic = -31999;
 			}
-			for (tt = 0; tt < game.numgui; tt++) {
-				if ((guis[tt].BgImage == sds->dynamicSpriteNumber) &&
-					(guis[tt].IsDisplayed())) {
+			for (tt = 0; tt < _GP(game).numgui; tt++) {
+				if ((_GP(guis)[tt].BgImage == sds->dynamicSpriteNumber) &&
+					(_GP(guis)[tt].IsDisplayed())) {
 					guis_need_update = 1;
 					break;
 				}
@@ -236,10 +236,10 @@ void DrawingSurface_DrawImageImpl(ScriptDrawingSurface *sds, Bitmap *src, int ds
 
 void DrawingSurface_DrawImageEx(ScriptDrawingSurface *sds, int dst_x, int dst_y, int slot, int trans, int dst_width, int dst_height,
 	int src_x, int src_y, int src_width, int src_height) {
-	if ((slot < 0) || (spriteset[slot] == nullptr))
+	if ((slot < 0) || (_GP(spriteset)[slot] == nullptr))
 		quit("!DrawingSurface.DrawImage: invalid sprite slot number specified");
-	DrawingSurface_DrawImageImpl(sds, spriteset[slot], dst_x, dst_y, trans, dst_width, dst_height,
-		src_x, src_y, src_width, src_height, slot, (game.SpriteInfos[slot].Flags & SPF_ALPHACHANNEL) != 0);
+	DrawingSurface_DrawImageImpl(sds, _GP(spriteset)[slot], dst_x, dst_y, trans, dst_width, dst_height,
+		src_x, src_y, src_width, src_height, slot, (_GP(game).SpriteInfos[slot].Flags & SPF_ALPHACHANNEL) != 0);
 }
 
 void DrawingSurface_DrawImage(ScriptDrawingSurface *sds, int xx, int yy, int slot, int trans, int width, int height) {
@@ -275,7 +275,7 @@ int DrawingSurface_GetDrawingColor(ScriptDrawingSurface *sds) {
 }
 
 void DrawingSurface_SetUseHighResCoordinates(ScriptDrawingSurface *sds, int highRes) {
-	if (game.AllowRelativeRes())
+	if (_GP(game).AllowRelativeRes())
 		sds->highResCoordinates = (highRes) ? 1 : 0;
 }
 
@@ -342,7 +342,7 @@ void DrawingSurface_DrawString(ScriptDrawingSurface *sds, int xx, int yy, int fo
 	Bitmap *ds = sds->StartDrawing();
 	// don't use wtextcolor because it will do a 16->32 conversion
 	color_t text_color = sds->currentColour;
-	if ((ds->GetColorDepth() <= 8) && (play.raw_color > 255)) {
+	if ((ds->GetColorDepth() <= 8) && (_GP(play).raw_color > 255)) {
 		text_color = ds->GetCompatibleColor(1);
 		debug_script_warn("RawPrint: Attempted to use hi-color on 256-col background");
 	}
@@ -359,22 +359,22 @@ void DrawingSurface_DrawStringWrapped(ScriptDrawingSurface *sds, int xx, int yy,
 	sds->PointToGameResolution(&xx, &yy);
 	sds->SizeToGameResolution(&wid);
 
-	if (break_up_text_into_lines(msg, Lines, wid, font) == 0)
+	if (break_up_text_into_lines(msg, _GP(fontLines), wid, font) == 0)
 		return;
 
 	Bitmap *ds = sds->StartDrawing();
 	color_t text_color = sds->currentColour;
 
-	for (size_t i = 0; i < Lines.Count(); i++) {
+	for (size_t i = 0; i < _GP(fontLines).Count(); i++) {
 		int drawAtX = xx;
 
 		if (alignment & kMAlignHCenter) {
-			drawAtX = xx + ((wid / 2) - wgettextwidth(Lines[i], font) / 2);
+			drawAtX = xx + ((wid / 2) - wgettextwidth(_GP(fontLines)[i], font) / 2);
 		} else if (alignment & kMAlignRight) {
-			drawAtX = (xx + wid) - wgettextwidth(Lines[i], font);
+			drawAtX = (xx + wid) - wgettextwidth(_GP(fontLines)[i], font);
 		}
 
-		wouttext_outline(ds, drawAtX, yy + linespacing * i, font, text_color, Lines[i]);
+		wouttext_outline(ds, drawAtX, yy + linespacing * i, font, text_color, _GP(fontLines)[i]);
 	}
 
 	sds->FinishedDrawing();

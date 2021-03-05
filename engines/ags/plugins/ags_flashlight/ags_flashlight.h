@@ -68,7 +68,7 @@ private:
 	static const char *AGS_GetPluginName();
 	static void AGS_EngineStartup(IAGSEngine *engine);
 	static void AGS_EngineShutdown();
-	static NumberPtr AGS_EngineOnEvent(int event, NumberPtr data);
+	static int64 AGS_EngineOnEvent(int event, NumberPtr data);
 
 private:
 	/**
@@ -87,33 +87,34 @@ private:
 	static void CreateLightBitmap();
 	static void Update();
 	static void syncGame(Serializer &s);
-	static void SetFlashlightTint(int RedTint, int GreenTint, int BlueTint);
-	static int GetFlashlightTintRed();
-	static int GetFlashlightTintGreen();
-	static int GetFlashlightTintBlue();
-	static int GetFlashlightMinLightLevel();
-	static int GetFlashlightMaxLightLevel();
-	static void SetFlashlightDarkness(int LightLevel);
-	static int GetFlashlightDarkness();
-	static void SetFlashlightDarknessSize(int Size);
-	static int GetFlashlightDarknessSize();
-	static void SetFlashlightBrightness(int LightLevel);
-	static int GetFlashlightBrightness();
-	static void SetFlashlightBrightnessSize(int Size);
-	static int GetFlashlightBrightnessSize();
-	static void SetFlashlightPosition(int X, int Y);
-	static int GetFlashlightPositionX();
-	static int GetFlashlightPositionY();
-	static void SetFlashlightFollowMouse(int OnOff);
-	static int GetFlashlightFollowMouse();
-	static void SetFlashlightFollowCharacter(int CharacterId, int dx, int dy, int horz, int vert);
-	static int GetFlashlightFollowCharacter();
-	static int GetFlashlightCharacterDX();
-	static int GetFlashlightCharacterDY();
-	static int GetFlashlightCharacterHorz();
-	static int GetFlashlightCharacterVert();
-	static void SetFlashlightMask(int SpriteSlot);
-	static int GetFlashlightMask();
+
+	static void SetFlashlightTint(ScriptMethodParams &params);
+	static void GetFlashlightTintRed(ScriptMethodParams &params);
+	static void GetFlashlightTintGreen(ScriptMethodParams &params);
+	static void GetFlashlightTintBlue(ScriptMethodParams &params);
+	static void GetFlashlightMinLightLevel(ScriptMethodParams &params);
+	static void GetFlashlightMaxLightLevel(ScriptMethodParams &params);
+	static void SetFlashlightDarkness(ScriptMethodParams &params);
+	static void GetFlashlightDarkness(ScriptMethodParams &params);
+	static void SetFlashlightDarknessSize(ScriptMethodParams &params);
+	static void GetFlashlightDarknessSize(ScriptMethodParams &params);
+	static void SetFlashlightBrightness(ScriptMethodParams &params);
+	static void GetFlashlightBrightness(ScriptMethodParams &params);
+	static void SetFlashlightBrightnessSize(ScriptMethodParams &params);
+	static void GetFlashlightBrightnessSize(ScriptMethodParams &params);
+	static void SetFlashlightPosition(ScriptMethodParams &params);
+	static void GetFlashlightPositionX(ScriptMethodParams &params);
+	static void GetFlashlightPositionY(ScriptMethodParams &params);
+	static void SetFlashlightFollowMouse(ScriptMethodParams &params);
+	static void GetFlashlightFollowMouse(ScriptMethodParams &params);
+	static void SetFlashlightFollowCharacter(ScriptMethodParams &params);
+	static void GetFlashlightFollowCharacter(ScriptMethodParams &params);
+	static void GetFlashlightCharacterDX(ScriptMethodParams &params);
+	static void GetFlashlightCharacterDY(ScriptMethodParams &params);
+	static void GetFlashlightCharacterHorz(ScriptMethodParams &params);
+	static void GetFlashlightCharacterVert(ScriptMethodParams &params);
+	static void SetFlashlightMask(ScriptMethodParams &params);
+	static void GetFlashlightMask(ScriptMethodParams &params);
 public:
 	AGSFlashlight();
 };

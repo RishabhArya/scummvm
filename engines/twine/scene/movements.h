@@ -135,29 +135,21 @@ public:
 	/** Hero moved */
 	bool heroMoved = false; // twinsenMove
 
-	/** Process actor.x coordinate */
-	int16 processActorX = 0;
-	/** Process actor.y coordinate */
-	int16 processActorY = 0;
-	/** Process actor.z coordinate */
-	int16 processActorZ = 0;
+	/** Process actor coordinate */
+	Vec3 processActor;
 
-	/** Previous process actor.x coordinate */
-	int16 previousActorX = 0; // processActorVar2
-	/** Previous process actor.y coordinate */
-	int16 previousActorY = 0; // processActorVar3
-	/** Previous process actor.z coordinate */
-	int16 previousActorZ = 0; // processActorVar4
+	/** Previous process actor coordinate */
+	Vec3 previousActor;
 
 	int32 targetActorDistance = 0; // DoTrackVar1
 
 	/**
 	 * Get shadow position
-	 * @param X Shadow X coordinate
-	 * @param Y Shadow Y coordinate
-	 * @param Z Shadow Z coordinate
+	 * @param x Shadow X coordinate
+	 * @param y Shadow Y coordinate
+	 * @param z Shadow Z coordinate
 	 */
-	void getShadowPosition(int32 X, int32 Y, int32 Z);
+	void getShadowPosition(int32 x, int32 y, int32 z);
 
 	/**
 	 * Set actor safe angle
@@ -192,6 +184,10 @@ public:
 	 */
 	int32 getAngleAndSetTargetActorDistance(int32 x1, int32 z1, int32 x2, int32 z2);
 
+	inline int32 getAngleAndSetTargetActorDistance(const Vec3& v1, const Vec3 &v2) {
+		return getAngleAndSetTargetActorDistance(v1.x, v1.z, v2.x, v2.z);
+	}
+
 	/**
 	 * Rotate actor with a given angle
 	 * @param x Actor current X coordinate
@@ -207,7 +203,8 @@ public:
 	 * @param x2 Actor 2 X coordinate
 	 * @param z2 Actor 2 Z coordinate
 	 */
-	int32 getDistance2D(int32 x1, int32 z1, int32 x2, int32 z2);
+	int32 getDistance2D(int32 x1, int32 z1, int32 x2, int32 z2) const;
+	int32 getDistance2D(const Vec3 &v1, const Vec3 &v2) const;
 
 	/**
 	 * Get distance value in 3D
@@ -218,7 +215,8 @@ public:
 	 * @param y2 Actor 2 Y coordinate
 	 * @param z2 Actor 2 Z coordinate
 	 */
-	int32 getDistance3D(int32 x1, int32 y1, int32 z1, int32 x2, int32 y2, int32 z2);
+	int32 getDistance3D(int32 x1, int32 y1, int32 z1, int32 x2, int32 y2, int32 z2) const;
+	int32 getDistance3D(const Vec3 &v1, const Vec3 &v2) const;
 
 	/**
 	 * Move actor around the scene
@@ -227,7 +225,7 @@ public:
 	 * @param speed Rotate speed
 	 * @param movePtr Pointer to process movements
 	 */
-	void moveActor(int32 angleFrom, int32 angleTo, int32 speed, ActorMoveStruct *movePtr);
+	void moveActor(int32 angleFrom, int32 angleTo, int32 speed, ActorMoveStruct *movePtr) const;
 
 	void processActorMovements(int32 actorIdx);
 };

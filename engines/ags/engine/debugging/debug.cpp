@@ -44,7 +44,7 @@
 #include "ags/shared/script/cc_error.h"
 #include "ags/shared/util/string_utils.h"
 #include "ags/shared/util/textstreamwriter.h"
-#include "ags/engine/globals.h"
+#include "ags/globals.h"
 #include "ags/events.h"
 
 #if AGS_PLATFORM_OS_WINDOWS
@@ -58,9 +58,9 @@ using namespace AGS::Engine;
 
 extern char check_dynamic_sprites_at_exit;
 extern int displayed_room;
-extern RoomStruct thisroom;
+
 extern char pexbuf[STD_BUFFER_SIZE];
-extern GameSetupStruct game;
+
 
 #if AGS_PLATFORM_OS_WINDOWS
 
@@ -102,18 +102,18 @@ const String OutputGameConsoleID = "console";
 PDebugOutput create_log_output(const String &name, const String &path = "", LogFile::OpenMode open_mode = LogFile::kLogFile_Overwrite) {
 	// Else create new one, if we know this ID
 	if (name.CompareNoCase(OutputSystemID) == 0) {
-		return DbgMgr.RegisterOutput(OutputSystemID, AGSPlatformDriver::GetDriver(), kDbgMsg_None);
+		return _GP(DbgMgr).RegisterOutput(OutputSystemID, AGSPlatformDriver::GetDriver(), kDbgMsg_None);
 	} else if (name.CompareNoCase(OutputFileID) == 0) {
 		DebugLogFile.reset(new LogFile());
 		String logfile_path = !path.IsEmpty() ? path : String::FromFormat("%s/ags.log", platform->GetAppOutputDirectory());
 		if (!DebugLogFile->OpenFile(logfile_path, open_mode))
 			return nullptr;
 		platform->WriteStdOut("Logging to %s", logfile_path.GetCStr());
-		auto dbgout = DbgMgr.RegisterOutput(OutputFileID, DebugLogFile.get(), kDbgMsg_None);
+		auto dbgout = _GP(DbgMgr).RegisterOutput(OutputFileID, DebugLogFile.get(), kDbgMsg_None);
 		return dbgout;
 	} else if (name.CompareNoCase(OutputGameConsoleID) == 0) {
 		DebugConsole.reset(new ConsoleOutputTarget());
-		return DbgMgr.RegisterOutput(OutputGameConsoleID, DebugConsole.get(), kDbgMsg_None);
+		return _GP(DbgMgr).RegisterOutput(OutputGameConsoleID, DebugConsole.get(), kDbgMsg_None);
 	}
 	return nullptr;
 }
@@ -168,7 +168,7 @@ void apply_log_config(const ConfigTree &cfg, const String &log_id,
 		return;
 
 	// First test if already registered, if not then try create it
-	auto dbgout = DbgMgr.GetOutput(log_id);
+	auto dbgout = _GP(DbgMgr).GetOutput(log_id);
 	const bool was_created_earlier = dbgout != nullptr;
 	if (!dbgout) {
 		String path = INIreadstring(cfg, "log", String::FromFormat("%s-path", log_id.GetCStr()));
@@ -220,7 +220,7 @@ void init_debug(const ConfigTree &cfg, bool stderr_only) {
 
 	// Message buffer to save all messages in case we read different log settings from config file
 	DebugMsgBuff.reset(new MessageBuffer());
-	DbgMgr.RegisterOutput(OutputMsgBufID, DebugMsgBuff.get(), kDbgMsg_All);
+	_GP(DbgMgr).RegisterOutput(OutputMsgBufID, DebugMsgBuff.get(), kDbgMsg_All);
 }
 
 void apply_debug_config(const ConfigTree &cfg) {
@@ -245,7 +245,7 @@ void apply_debug_config(const ConfigTree &cfg) {
 		});
 
 	// Init game console if the game was compiled in Debug mode
-	if (game.options[OPT_DEBUGMODE] != 0) {
+	if (_GP(game).options[OPT_DEBUGMODE] != 0) {
 		apply_log_config(cfg, OutputGameConsoleID,
 			/* defaults */
 			true, {
@@ -258,7 +258,7 @@ void apply_debug_config(const ConfigTree &cfg) {
 
 	// If the game was compiled in Debug mode *and* there's no regular file log,
 	// then open "warnings.log" for printing script warnings.
-	if (game.options[OPT_DEBUGMODE] != 0 && !DebugLogFile) {
+	if (_GP(game).options[OPT_DEBUGMODE] != 0 && !DebugLogFile) {
 		auto dbgout = create_log_output(OutputFileID, "warnings.log", LogFile::kLogFile_OverwriteAtFirstMessage);
 		if (dbgout) {
 			dbgout->SetGroupFilter(kDbgGroup_Game, kDbgMsg_Warn);
@@ -267,13 +267,13 @@ void apply_debug_config(const ConfigTree &cfg) {
 	}
 
 	// We don't need message buffer beyond this point
-	DbgMgr.UnregisterOutput(OutputMsgBufID);
+	_GP(DbgMgr).UnregisterOutput(OutputMsgBufID);
 	DebugMsgBuff.reset();
 }
 
 void shutdown_debug() {
 	// Shutdown output subsystem
-	DbgMgr.UnregisterAll();
+	_GP(DbgMgr).UnregisterAll();
 
 	DebugMsgBuff.reset();
 	DebugLogFile.reset();
@@ -282,7 +282,7 @@ void shutdown_debug() {
 
 void debug_set_console(bool enable) {
 	if (DebugConsole)
-		DbgMgr.GetOutput(OutputGameConsoleID)->SetEnabled(enable);
+		_GP(DbgMgr).GetOutput(OutputGameConsoleID)->SetEnabled(enable);
 }
 
 // Prepends message text with current room number and running script info, then logs result
@@ -291,11 +291,11 @@ void debug_script_print(const String &msg, MessageType mt) {
 	ccInstance *curinst = ccInstance::GetCurrentInstance();
 	if (curinst != nullptr) {
 		String scriptname;
-		if (curinst->instanceof == gamescript)
+		if (curinst->instanceof == _GP(gamescript))
 			scriptname = "G ";
-		else if (curinst->instanceof == thisroom.CompiledScript)
+		else if (curinst->instanceof == _GP(thisroom).CompiledScript)
 			scriptname = "R ";
-		else if (curinst->instanceof == dialogScriptsScript)
+		else if (curinst->instanceof == _GP(dialogScriptsScript))
 			scriptname = "D ";
 		else
 			scriptname = "? ";
@@ -340,14 +340,6 @@ bool get_script_position(ScriptPosition &script_pos) {
 	}
 	return false;
 }
-
-struct Breakpoint {
-	char scriptName[80];
-	int lineNumber;
-};
-
-std::vector<Breakpoint> breakpoints;
-int numBreakpoints = 0;
 
 bool send_message_to_editor(const char *msg, const char *errorMsg) {
 	String callStack = get_cur_script(25);
@@ -443,19 +435,19 @@ int check_for_messages_from_editor() {
 			int lineNumber = atoi(msgPtr);
 
 			if (isDelete) {
-				for (i = 0; i < numBreakpoints; i++) {
-					if ((breakpoints[i].lineNumber == lineNumber) &&
-						(strcmp(breakpoints[i].scriptName, scriptNameBuf) == 0)) {
-						numBreakpoints--;
-						breakpoints.erase(breakpoints.begin() + i);
+				for (i = 0; i < _G(numBreakpoints); i++) {
+					if ((_G(breakpoints)[i].lineNumber == lineNumber) &&
+						(strcmp(_G(breakpoints)[i].scriptName, scriptNameBuf) == 0)) {
+						_G(numBreakpoints)--;
+						_G(breakpoints).erase(_G(breakpoints).begin() + i);
 						break;
 					}
 				}
 			} else {
-				breakpoints.push_back(Breakpoint());
-				strcpy(breakpoints[numBreakpoints].scriptName, scriptNameBuf);
-				breakpoints[numBreakpoints].lineNumber = lineNumber;
-				numBreakpoints++;
+				_G(breakpoints).push_back(Globals::Breakpoint());
+				strcpy(_G(breakpoints)[_G(numBreakpoints)].scriptName, scriptNameBuf);
+				_G(breakpoints)[_G(numBreakpoints)].lineNumber = lineNumber;
+				_G(numBreakpoints)++;
 			}
 		} else if (strncmp(msgPtr, "RESUME", 6) == 0) {
 			_G(game_paused_in_debugger) = 0;
@@ -541,9 +533,9 @@ void scriptDebugHook(ccInstance *ccinst, int linenum) {
 
 	const char *scriptName = ccinst->runningInst->instanceof->GetSectionName(ccinst->pc);
 
-	for (int i = 0; i < numBreakpoints; i++) {
-		if ((breakpoints[i].lineNumber == linenum) &&
-			(strcmp(breakpoints[i].scriptName, scriptName) == 0)) {
+	for (int i = 0; i < _G(numBreakpoints); i++) {
+		if ((_G(breakpoints)[i].lineNumber == linenum) &&
+			(strcmp(_G(breakpoints)[i].scriptName, scriptName) == 0)) {
 			break_into_debugger();
 			break;
 		}
@@ -553,7 +545,7 @@ void scriptDebugHook(ccInstance *ccinst, int linenum) {
 int scrlockWasDown = 0;
 
 void check_debug_keys() {
-	if (play.debug_mode) {
+	if (_GP(play).debug_mode) {
 		// do the run-time script debugging
 
 		if (!::AGS::g_events->isKeyPressed(KEY_SCRLOCK) && scrlockWasDown)

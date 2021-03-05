@@ -38,9 +38,9 @@ namespace TwinE {
 Movements::Movements(TwinEEngine *engine) : _engine(engine) {}
 
 void Movements::getShadowPosition(int32 x, int32 y, int32 z) {
-	const uint8 *ptr = _engine->_grid->getBlockBufferGround(x, y, z, processActorY);
-	processActorX = x;
-	processActorZ = z;
+	const uint8 *ptr = _engine->_grid->getBlockBufferGround(x, y, z, processActor.y);
+	processActor.x = x;
+	processActor.z = z;
 
 	if (*ptr) {
 		const uint8 *blockPtr = _engine->_grid->getBlockLibrary(*ptr - 1) + 3 + *(ptr + 1) * 4;
@@ -51,9 +51,7 @@ void Movements::getShadowPosition(int32 x, int32 y, int32 z) {
 	}
 	_engine->_collision->reajustActorPosition(_engine->_actor->shadowCollisionType);
 
-	_engine->_actor->shadowX = processActorX;
-	_engine->_actor->shadowY = processActorY;
-	_engine->_actor->shadowZ = processActorZ;
+	_engine->_actor->shadowCoord = processActor;
 }
 
 void Movements::setActorAngleSafe(int16 startAngle, int16 endAngle, int16 stepAngle, ActorMoveStruct *movePtr) {
@@ -142,19 +140,27 @@ int32 Movements::getAngleAndSetTargetActorDistance(int32 x1, int32 z1, int32 x2,
 
 void Movements::rotateActor(int32 x, int32 z, int32 angle) {
 	const double radians = AngleToRadians(angle);
-	_engine->_renderer->destX = (int32)(x * cos(radians) + z * sin(radians));
-	_engine->_renderer->destZ = (int32)(-x * sin(radians) + z * cos(radians));
+	_engine->_renderer->destPos.x = (int32)(x * cos(radians) + z * sin(radians));
+	_engine->_renderer->destPos.z = (int32)(-x * sin(radians) + z * cos(radians));
 }
 
-int32 Movements::getDistance2D(int32 x1, int32 z1, int32 x2, int32 z2) {
+int32 Movements::getDistance2D(int32 x1, int32 z1, int32 x2, int32 z2) const {
 	return (int32)sqrt((float)((x2 - x1) * (x2 - x1) + (z2 - z1) * (z2 - z1)));
 }
 
-int32 Movements::getDistance3D(int32 x1, int32 y1, int32 z1, int32 x2, int32 y2, int32 z2) {
+int32 Movements::getDistance2D(const Vec3 &v1, const Vec3 &v2) const {
+	return (int32)sqrt((float)((v2.x - v1.x) * (v2.x - v1.x) + (v2.z - v1.z) * (v2.z - v1.z)));
+}
+
+int32 Movements::getDistance3D(int32 x1, int32 y1, int32 z1, int32 x2, int32 y2, int32 z2) const {
 	return (int32)sqrt((float)((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1) + (z2 - z1) * (z2 - z1)));
 }
 
-void Movements::moveActor(int32 angleFrom, int32 angleTo, int32 speed, ActorMoveStruct *movePtr) { // ManualRealAngle
+int32 Movements::getDistance3D(const Vec3 &v1, const Vec3 &v2) const {
+	return (int32)sqrt((float)((v2.x - v1.x) * (v2.x - v1.x) + (v2.y - v1.y) * (v2.y - v1.y) + (v2.z - v1.z) * (v2.z - v1.z)));
+}
+
+void Movements::moveActor(int32 angleFrom, int32 angleTo, int32 speed, ActorMoveStruct *movePtr) const { // ManualRealAngle
 	const int16 from = ClampAngle(angleFrom);
 	const int16 to = ClampAngle(angleTo);
 
@@ -268,7 +274,8 @@ bool Movements::processBehaviourExecution(int actorIdx) {
 
 bool Movements::processAttackExecution(int actorIdx) {
 	ActorStruct *actor = _engine->_scene->getActor(actorIdx);
-	if (!_engine->_gameState->usingSabre) { // Use Magic Ball
+	if (!_engine->_gameState->usingSabre) {
+		// Use Magic Ball
 		if (_engine->_gameState->hasItem(InventoryItems::kiMagicBall)) {
 			if (_engine->_gameState->magicBallIdx == -1) {
 				_engine->_animations->initAnim(AnimationTypes::kThrowBall, kAnimationType_1, AnimationTypes::kStanding, actorIdx);
@@ -385,7 +392,7 @@ void Movements::processManualAction(int actorIdx) {
 void Movements::processFollowAction(int actorIdx) {
 	ActorStruct *actor = _engine->_scene->getActor(actorIdx);
 	const ActorStruct *followedActor = _engine->_scene->getActor(actor->followedActor);
-	int32 newAngle = getAngleAndSetTargetActorDistance(actor->x, actor->z, followedActor->x, followedActor->z);
+	int32 newAngle = getAngleAndSetTargetActorDistance(actor->pos, followedActor->pos);
 	if (actor->staticFlags.bIsSpriteActor) {
 		actor->angle = newAngle;
 	} else {
@@ -424,8 +431,8 @@ void Movements::processTrackAction(int actorIdx) {
 void Movements::processSameXZAction(int actorIdx) {
 	ActorStruct *actor = _engine->_scene->getActor(actorIdx);
 	const ActorStruct *followedActor = _engine->_scene->getActor(actor->followedActor);
-	actor->x = followedActor->x;
-	actor->z = followedActor->z;
+	actor->pos.x = followedActor->pos.x;
+	actor->pos.z = followedActor->pos.z;
 }
 
 void Movements::processActorMovements(int32 actorIdx) {

@@ -32,7 +32,6 @@
 #include "engines/icb/common/px_common.h"
 #include "engines/icb/common/px_scriptengine.h"
 #include "engines/icb/common/px_game_object.h"
-#include "engines/icb/common/px_maths.h"
 #include "engines/icb/common/ptr_util.h"
 #include "engines/icb/mission.h"
 #include "engines/icb/session.h"
@@ -576,7 +575,7 @@ void _game_session::Shut_down_id(uint32 id) {
 	// we have id of object
 
 	// must be legal id
-	_ASSERT(id < MS->Fetch_number_of_objects());
+	assert(id < MS->Fetch_number_of_objects());
 
 	logic_structs[id]->ob_status = OB_STATUS_HELD; // lock out
 

@@ -150,7 +150,8 @@ public:
 
 #pragma endregion
 
-int AGSBlend::GetAlpha(int sprite, int x, int y) {
+void AGSBlend::GetAlpha(ScriptMethodParams &params) {
+	PARAMS3(int, sprite, int, x, int, y);
 	BITMAP *engineSprite = _engine->GetSpriteGraphic(sprite);
 
 	unsigned char **charbuffer = _engine->GetRawBitmapSurface(engineSprite);
@@ -160,10 +161,11 @@ int AGSBlend::GetAlpha(int sprite, int x, int y) {
 
 	_engine->ReleaseBitmapSurface(engineSprite);
 
-	return alpha;
+	params._result = alpha;
 }
 
-int AGSBlend::PutAlpha(int sprite, int x, int y, int alpha) {
+void AGSBlend::PutAlpha(ScriptMethodParams &params) {
+	PARAMS4(int, sprite, int, x, int, y, int, alpha);
 	BITMAP *engineSprite = _engine->GetSpriteGraphic(sprite);
 
 	unsigned char **charbuffer = _engine->GetRawBitmapSurface(engineSprite);
@@ -177,14 +179,15 @@ int AGSBlend::PutAlpha(int sprite, int x, int y, int alpha) {
 
 	_engine->ReleaseBitmapSurface(engineSprite);
 
-	return alpha;
+	params._result = alpha;
 }
 
 int AGSBlend::xytolocale(int x, int y, int width) {
 	return (y * width + x);
 }
 
-int AGSBlend::HighPass(int sprite, int threshold) {
+void AGSBlend::HighPass(ScriptMethodParams &params) {
+	PARAMS2(int, sprite, int, threshold);
 	BITMAP *src = _engine->GetSpriteGraphic(sprite);
 	int32 srcWidth, srcHeight;
 
@@ -211,11 +214,12 @@ int AGSBlend::HighPass(int sprite, int threshold) {
 
 	}
 
-	return 0;
+	params._result = 0;
 
 }
 
-int AGSBlend::Blur(int sprite, int radius) {
+void AGSBlend::Blur(ScriptMethodParams &params) {
+	PARAMS2(int, sprite, int, radius);
 	BITMAP *src = _engine->GetSpriteGraphic(sprite);
 
 	int32 srcWidth, srcHeight;
@@ -353,10 +357,11 @@ int AGSBlend::Blur(int sprite, int radius) {
 	delete srclongbuffer;
 	delete srccharbuffer;
 
-	return 0;
+	params._result = 0;
 }
 
-int AGSBlend::DrawSprite(int destination, int sprite, int x, int y, int DrawMode, int trans) {
+void AGSBlend::DrawSprite(ScriptMethodParams &params) {
+	PARAMS6(int, destination, int, sprite, int, x, int, y, int, DrawMode, int, trans);
 	trans = 100 - trans;
 	int32 srcWidth, srcHeight, destWidth, destHeight;
 
@@ -366,7 +371,11 @@ int AGSBlend::DrawSprite(int destination, int sprite, int x, int y, int DrawMode
 	_engine->GetBitmapDimensions(src, &srcWidth, &srcHeight, nullptr);
 	_engine->GetBitmapDimensions(dest, &destWidth, &destHeight, nullptr);
 
-	if (x > destWidth || y > destHeight || x + srcWidth < 0 || y + srcHeight < 0) return 1; // offscreen
+	if (x > destWidth || y > destHeight || x + srcWidth < 0 || y + srcHeight < 0) {
+		// offscreen
+		params._result = 1;
+		return;
+	}
 
 	unsigned char **srccharbuffer = _engine->GetRawBitmapSurface(src);
 	unsigned int **srclongbuffer = (unsigned int **)srccharbuffer;
@@ -573,11 +582,12 @@ int AGSBlend::DrawSprite(int destination, int sprite, int x, int y, int DrawMode
 	_engine->ReleaseBitmapSurface(src);
 	_engine->ReleaseBitmapSurface(dest);
 	_engine->NotifySpriteUpdated(destination);
-	return 0;
+	params._result = 0;
 
 }
 
-int AGSBlend::DrawAdd(int destination, int sprite, int x, int y, float scale) {
+void AGSBlend::DrawAdd(ScriptMethodParams &params) {
+	PARAMS5(int, destination, int, sprite, int, x, int, y, float, scale);
 	int32 srcWidth, srcHeight, destWidth, destHeight;
 
 	BITMAP *src = _engine->GetSpriteGraphic(sprite);
@@ -586,7 +596,11 @@ int AGSBlend::DrawAdd(int destination, int sprite, int x, int y, float scale) {
 	_engine->GetBitmapDimensions(src, &srcWidth, &srcHeight, nullptr);
 	_engine->GetBitmapDimensions(dest, &destWidth, &destHeight, nullptr);
 
-	if (x > destWidth || y > destHeight) return 1; // offscreen
+	if (x > destWidth || y > destHeight) {
+		// offscreen
+		params._result = 1;
+		return;
+	}
 
 	unsigned char **srccharbuffer = _engine->GetRawBitmapSurface(src);
 	unsigned int **srclongbuffer = (unsigned int **)srccharbuffer;
@@ -647,10 +661,11 @@ int AGSBlend::DrawAdd(int destination, int sprite, int x, int y, float scale) {
 	_engine->ReleaseBitmapSurface(dest);
 	_engine->NotifySpriteUpdated(destination);
 
-	return 0;
+	params._result = 0;
 }
 
-int AGSBlend::DrawAlpha(int destination, int sprite, int x, int y, int trans) {
+void AGSBlend::DrawAlpha(ScriptMethodParams &params) {
+	PARAMS5(int, destination, int, sprite, int, x, int, y, int, trans);
 	trans = 100 - trans;
 
 	int32 srcWidth, srcHeight, destWidth, destHeight;
@@ -661,7 +676,11 @@ int AGSBlend::DrawAlpha(int destination, int sprite, int x, int y, int trans) {
 	_engine->GetBitmapDimensions(src, &srcWidth, &srcHeight, nullptr);
 	_engine->GetBitmapDimensions(dest, &destWidth, &destHeight, nullptr);
 
-	if (x > destWidth || y > destHeight) return 1; // offscreen
+	if (x > destWidth || y > destHeight) {
+		// offscreen
+		params._result = 1;
+		return;
+	}
 
 	unsigned char **srccharbuffer = _engine->GetRawBitmapSurface(src);
 	unsigned int **srclongbuffer = (unsigned int **)srccharbuffer;
@@ -715,7 +734,7 @@ int AGSBlend::DrawAlpha(int destination, int sprite, int x, int y, int trans) {
 	_engine->ReleaseBitmapSurface(dest);
 	_engine->NotifySpriteUpdated(destination);
 
-	return 0;
+	params._result = 0;
 }
 
 } // namespace AGSBlend

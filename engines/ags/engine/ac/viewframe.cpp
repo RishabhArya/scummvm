@@ -34,38 +34,39 @@
 #include "ags/shared/debugging/out.h"
 #include "ags/engine/script/script_api.h"
 #include "ags/engine/script/script_runtime.h"
+#include "ags/globals.h"
 
 namespace AGS3 {
 
 using AGS::Shared::Bitmap;
 using AGS::Shared::Graphics;
 
-extern GameSetupStruct game;
-extern ViewStruct *views;
-extern SpriteCache spriteset;
-extern CCAudioClip ccDynamicAudioClip;
+
+
+
+
 
 
 int ViewFrame_GetFlipped(ScriptViewFrame *svf) {
-	if (views[svf->view].loops[svf->loop].frames[svf->frame].flags & VFLG_FLIPSPRITE)
+	if (_G(views)[svf->view].loops[svf->loop].frames[svf->frame].flags & VFLG_FLIPSPRITE)
 		return 1;
 	return 0;
 }
 
 int ViewFrame_GetGraphic(ScriptViewFrame *svf) {
-	return views[svf->view].loops[svf->loop].frames[svf->frame].pic;
+	return _G(views)[svf->view].loops[svf->loop].frames[svf->frame].pic;
 }
 
 void ViewFrame_SetGraphic(ScriptViewFrame *svf, int newPic) {
-	views[svf->view].loops[svf->loop].frames[svf->frame].pic = newPic;
+	_G(views)[svf->view].loops[svf->loop].frames[svf->frame].pic = newPic;
 }
 
 ScriptAudioClip *ViewFrame_GetLinkedAudio(ScriptViewFrame *svf) {
-	int soundIndex = views[svf->view].loops[svf->loop].frames[svf->frame].sound;
+	int soundIndex = _G(views)[svf->view].loops[svf->loop].frames[svf->frame].sound;
 	if (soundIndex < 0)
 		return nullptr;
 
-	return &game.audioClips[soundIndex];
+	return &_GP(game).audioClips[soundIndex];
 }
 
 void ViewFrame_SetLinkedAudio(ScriptViewFrame *svf, ScriptAudioClip *clip) {
@@ -73,29 +74,29 @@ void ViewFrame_SetLinkedAudio(ScriptViewFrame *svf, ScriptAudioClip *clip) {
 	if (clip != nullptr)
 		newSoundIndex = clip->id;
 
-	views[svf->view].loops[svf->loop].frames[svf->frame].sound = newSoundIndex;
+	_G(views)[svf->view].loops[svf->loop].frames[svf->frame].sound = newSoundIndex;
 }
 
 int ViewFrame_GetSound(ScriptViewFrame *svf) {
 	// convert audio clip to old-style sound number
-	return get_old_style_number_for_sound(views[svf->view].loops[svf->loop].frames[svf->frame].sound);
+	return get_old_style_number_for_sound(_G(views)[svf->view].loops[svf->loop].frames[svf->frame].sound);
 }
 
 void ViewFrame_SetSound(ScriptViewFrame *svf, int newSound) {
 	if (newSound < 1) {
-		views[svf->view].loops[svf->loop].frames[svf->frame].sound = -1;
+		_G(views)[svf->view].loops[svf->loop].frames[svf->frame].sound = -1;
 	} else {
 		// convert sound number to audio clip
-		ScriptAudioClip *clip = GetAudioClipForOldStyleNumber(game, false, newSound);
+		ScriptAudioClip *clip = GetAudioClipForOldStyleNumber(_GP(game), false, newSound);
 		if (clip == nullptr)
 			quitprintf("!SetFrameSound: audio clip aSound%d not found", newSound);
 
-		views[svf->view].loops[svf->loop].frames[svf->frame].sound = clip->id + (game.IsLegacyAudioSystem() ? 0x10000000 : 0);
+		_G(views)[svf->view].loops[svf->loop].frames[svf->frame].sound = clip->id + (_GP(game).IsLegacyAudioSystem() ? 0x10000000 : 0);
 	}
 }
 
 int ViewFrame_GetSpeed(ScriptViewFrame *svf) {
-	return views[svf->view].loops[svf->loop].frames[svf->frame].speed;
+	return _G(views)[svf->view].loops[svf->loop].frames[svf->frame].speed;
 }
 
 int ViewFrame_GetView(ScriptViewFrame *svf) {
@@ -116,9 +117,9 @@ void precache_view(int view) {
 	if (view < 0)
 		return;
 
-	for (int i = 0; i < views[view].numLoops; i++) {
-		for (int j = 0; j < views[view].loops[i].numFrames; j++)
-			spriteset.Precache(views[view].loops[i].frames[j].pic);
+	for (int i = 0; i < _G(views)[view].numLoops; i++) {
+		for (int j = 0; j < _G(views)[view].loops[i].numFrames; j++)
+			_GP(spriteset).Precache(_G(views)[view].loops[i].frames[j].pic);
 	}
 }
 
@@ -126,23 +127,23 @@ void precache_view(int view) {
 // to play a sound or whatever
 void CheckViewFrame(int view, int loop, int frame, int sound_volume) {
 	ScriptAudioChannel *channel = nullptr;
-	if (game.IsLegacyAudioSystem()) {
-		if (views[view].loops[loop].frames[frame].sound > 0) {
-			if (views[view].loops[loop].frames[frame].sound < 0x10000000) {
-				ScriptAudioClip *clip = GetAudioClipForOldStyleNumber(game, false, views[view].loops[loop].frames[frame].sound);
+	if (_GP(game).IsLegacyAudioSystem()) {
+		if (_G(views)[view].loops[loop].frames[frame].sound > 0) {
+			if (_G(views)[view].loops[loop].frames[frame].sound < 0x10000000) {
+				ScriptAudioClip *clip = GetAudioClipForOldStyleNumber(_GP(game), false, _G(views)[view].loops[loop].frames[frame].sound);
 				if (clip)
-					views[view].loops[loop].frames[frame].sound = clip->id + 0x10000000;
+					_G(views)[view].loops[loop].frames[frame].sound = clip->id + 0x10000000;
 				else {
-					views[view].loops[loop].frames[frame].sound = 0;
+					_G(views)[view].loops[loop].frames[frame].sound = 0;
 					return;
 				}
 			}
-			channel = play_audio_clip_by_index(views[view].loops[loop].frames[frame].sound - 0x10000000);
+			channel = play_audio_clip_by_index(_G(views)[view].loops[loop].frames[frame].sound - 0x10000000);
 		}
 	} else {
-		if (views[view].loops[loop].frames[frame].sound >= 0) {
+		if (_G(views)[view].loops[loop].frames[frame].sound >= 0) {
 			// play this sound (eg. footstep)
-			channel = play_audio_clip_by_index(views[view].loops[loop].frames[frame].sound);
+			channel = play_audio_clip_by_index(_G(views)[view].loops[loop].frames[frame].sound);
 		}
 	}
 	if (sound_volume != SCR_NO_VALUE && channel != nullptr) {
@@ -158,21 +159,21 @@ void CheckViewFrame(int view, int loop, int frame, int sound_volume) {
 void DrawViewFrame(Bitmap *ds, const ViewFrame *vframe, int x, int y, bool alpha_blend) {
 	// NOTE: DrawViewFrame supports alpha blending only since OPT_SPRITEALPHA;
 	// this is why there's no sense in blending if it's not set (will do no good anyway).
-	if (alpha_blend && game.options[OPT_SPRITEALPHA] == kSpriteAlphaRender_Proper) {
-		Bitmap *vf_bmp = spriteset[vframe->pic];
+	if (alpha_blend && _GP(game).options[OPT_SPRITEALPHA] == kSpriteAlphaRender_Proper) {
+		Bitmap *vf_bmp = _GP(spriteset)[vframe->pic];
 		Bitmap *src = vf_bmp;
 		if (vframe->flags & VFLG_FLIPSPRITE) {
 			src = new Bitmap(vf_bmp->GetWidth(), vf_bmp->GetHeight(), vf_bmp->GetColorDepth());
 			src->FlipBlt(vf_bmp, 0, 0, Shared::kBitmap_HFlip);
 		}
-		draw_sprite_support_alpha(ds, true, x, y, src, (game.SpriteInfos[vframe->pic].Flags & SPF_ALPHACHANNEL) != 0);
+		draw_sprite_support_alpha(ds, true, x, y, src, (_GP(game).SpriteInfos[vframe->pic].Flags & SPF_ALPHACHANNEL) != 0);
 		if (src != vf_bmp)
 			delete src;
 	} else {
 		if (vframe->flags & VFLG_FLIPSPRITE)
-			ds->FlipBlt(spriteset[vframe->pic], x, y, Shared::kBitmap_HFlip);
+			ds->FlipBlt(_GP(spriteset)[vframe->pic], x, y, Shared::kBitmap_HFlip);
 		else
-			ds->Blit(spriteset[vframe->pic], x, y, Shared::kBitmap_Transparency);
+			ds->Blit(_GP(spriteset)[vframe->pic], x, y, Shared::kBitmap_Transparency);
 	}
 }
 
@@ -203,7 +204,7 @@ RuntimeScriptValue Sc_ViewFrame_SetGraphic(void *self, const RuntimeScriptValue 
 
 // ScriptAudioClip* (ScriptViewFrame *svf)
 RuntimeScriptValue Sc_ViewFrame_GetLinkedAudio(void *self, const RuntimeScriptValue *params, int32_t param_count) {
-	API_OBJCALL_OBJ(ScriptViewFrame, ScriptAudioClip, ccDynamicAudioClip, ViewFrame_GetLinkedAudio);
+	API_OBJCALL_OBJ(ScriptViewFrame, ScriptAudioClip, _GP(ccDynamicAudioClip), ViewFrame_GetLinkedAudio);
 }
 
 // void (ScriptViewFrame *svf, ScriptAudioClip* clip)

@@ -34,18 +34,19 @@
 #include "ags/engine/main/maindefines_ex.h"    // RETURN_CONTINUE
 #include "ags/engine/main/update.h"
 #include "ags/engine/media/audio/audio_system.h"
+#include "ags/globals.h"
 #include "ags/ags.h"
 
 namespace AGS3 {
 
 using namespace AGS::Shared;
 
-extern ViewStruct *views;
-extern GameSetupStruct game;
+
+
 extern int displayed_room;
-extern GameState play;
+
 extern int char_speaking;
-extern RoomStruct thisroom;
+
 extern unsigned int loopcounter;
 
 #define Random __Rand
@@ -85,7 +86,7 @@ void CharacterInfo::UpdateMoveAndAnim(int &char_index, CharacterExtras *chex, in
 
 	// Make sure it doesn't flash up a blue cup
 	if (view < 0);
-	else if (loop >= views[view].numLoops)
+	else if (loop >= _G(views)[view].numLoops)
 		loop = 0;
 
 	int doing_nothing = 1;
@@ -108,13 +109,13 @@ void CharacterInfo::UpdateMoveAndAnim(int &char_index, CharacterExtras *chex, in
 }
 
 void CharacterInfo::UpdateFollowingExactlyCharacter() {
-	x = game.chars[following].x;
-	y = game.chars[following].y;
-	z = game.chars[following].z;
-	room = game.chars[following].room;
-	prevroom = game.chars[following].prevroom;
+	x = _GP(game).chars[following].x;
+	y = _GP(game).chars[following].y;
+	z = _GP(game).chars[following].z;
+	room = _GP(game).chars[following].room;
+	prevroom = _GP(game).chars[following].prevroom;
 
-	int usebase = game.chars[following].get_baseline();
+	int usebase = _GP(game).chars[following].get_baseline();
 
 	if (flags & CHF_BEHINDSHEPHERD)
 		baseline = usebase - 1;
@@ -137,8 +138,8 @@ int CharacterInfo::update_character_walking(CharacterExtras *chex) {
 					wantloop = 0;
 				if (wantloop < 0)
 					wantloop = 7;
-				if ((turnlooporder[wantloop] >= views[view].numLoops) ||
-					(views[view].loops[turnlooporder[wantloop]].numFrames < 1) ||
+				if ((turnlooporder[wantloop] >= _G(views)[view].numLoops) ||
+					(_G(views)[view].loops[turnlooporder[wantloop]].numFrames < 1) ||
 					((turnlooporder[wantloop] >= 4) && ((flags & CHF_NODIAGONAL) != 0))) {
 					if (walking >= TURNING_BACKWARDS)
 						wantloop--;
@@ -202,11 +203,11 @@ void CharacterInfo::update_character_moving(int &char_index, CharacterExtras *ch
 				walkwaitcounter++;
 		}
 
-		if (loop >= views[view].numLoops)
+		if (loop >= _G(views)[view].numLoops)
 			quitprintf("Unable to render character %d (%s) because loop %d does not exist in view %d", index_id, name, loop, view + 1);
 
 		// check don't overflow loop
-		int framesInLoop = views[view].loops[loop].numFrames;
+		int framesInLoop = _G(views)[view].loops[loop].numFrames;
 		if (frame > framesInLoop) {
 			frame = 1;
 
@@ -233,15 +234,15 @@ void CharacterInfo::update_character_moving(int &char_index, CharacterExtras *ch
 
 			if ((flags & CHF_MOVENOTWALK) == 0) {
 				frame++;
-				if (frame >= views[view].loops[loop].numFrames) {
+				if (frame >= _G(views)[view].loops[loop].numFrames) {
 					// end of loop, so loop back round skipping the standing frame
 					frame = 1;
 
-					if (views[view].loops[loop].numFrames < 2)
+					if (_G(views)[view].loops[loop].numFrames < 2)
 						frame = 0;
 				}
 
-				chex->animwait = views[view].loops[loop].frames[frame].speed + animspeed;
+				chex->animwait = _G(views)[view].loops[loop].frames[frame].speed + animspeed;
 
 				if (flags & CHF_ANTIGLIDE)
 					walkwait = chex->animwait;
@@ -267,14 +268,14 @@ int CharacterInfo::update_character_animating(int &aa, int &doing_nothing) {
 			doing_nothing = 1;
 
 		if (wait > 0) wait--;
-		else if ((char_speaking == aa) && (game.options[OPT_LIPSYNCTEXT] != 0)) {
+		else if ((char_speaking == aa) && (_GP(game).options[OPT_LIPSYNCTEXT] != 0)) {
 			// currently talking with lip-sync speech
 			int fraa = frame;
 			wait = update_lip_sync(view, loop, &fraa) - 1;
 			// closed mouth at end of sentence
 			// NOTE: standard lip-sync is synchronized with text timer, not voice file
-			if (play.speech_in_post_state ||
-				((play.messagetime >= 0) && (play.messagetime < play.close_mouth_speech_time)))
+			if (_GP(play).speech_in_post_state ||
+				((_GP(play).messagetime >= 0) && (_GP(play).messagetime < _GP(play).close_mouth_speech_time)))
 				frame = 0;
 
 			if (frame != fraa) {
@@ -291,17 +292,17 @@ int CharacterInfo::update_character_animating(int &aa, int &doing_nothing) {
 				if (frame < 0) {
 					// if the previous loop is a Run Next Loop one, go back to it
 					if ((loop > 0) &&
-						(views[view].loops[loop - 1].RunNextLoop())) {
+						(_G(views)[view].loops[loop - 1].RunNextLoop())) {
 
 						loop--;
-						frame = views[view].loops[loop].numFrames - 1;
+						frame = _G(views)[view].loops[loop].numFrames - 1;
 					} else if (animating & CHANIM_REPEAT) {
 
-						frame = views[view].loops[loop].numFrames - 1;
+						frame = _G(views)[view].loops[loop].numFrames - 1;
 
-						while (views[view].loops[loop].RunNextLoop()) {
+						while (_G(views)[view].loops[loop].RunNextLoop()) {
 							loop++;
-							frame = views[view].loops[loop].numFrames - 1;
+							frame = _G(views)[view].loops[loop].numFrames - 1;
 						}
 					} else {
 						frame++;
@@ -312,19 +313,19 @@ int CharacterInfo::update_character_animating(int &aa, int &doing_nothing) {
 				frame++;
 
 			if ((aa == char_speaking) &&
-				(play.speech_in_post_state ||
-				((!play.speech_has_voice) &&
-					(play.close_mouth_speech_time > 0) &&
-					(play.messagetime < play.close_mouth_speech_time)))) {
+				(_GP(play).speech_in_post_state ||
+				((!_GP(play).speech_has_voice) &&
+					(_GP(play).close_mouth_speech_time > 0) &&
+					(_GP(play).messagetime < _GP(play).close_mouth_speech_time)))) {
 				// finished talking - stop animation
 				animating = 0;
 				frame = 0;
 			}
 
-			if (frame >= views[view].loops[loop].numFrames) {
+			if (frame >= _G(views)[view].loops[loop].numFrames) {
 
-				if (views[view].loops[loop].RunNextLoop()) {
-					if (loop + 1 >= views[view].numLoops)
+				if (_G(views)[view].loops[loop].RunNextLoop()) {
+					if (loop + 1 >= _G(views)[view].numLoops)
 						quit("!Animating character tried to overrun last loop in view");
 					loop++;
 					frame = 0;
@@ -345,14 +346,14 @@ int CharacterInfo::update_character_animating(int &aa, int &doing_nothing) {
 				} else {
 					frame = 0;
 					// if it's a multi-loop animation, go back to start
-					if (play.no_multiloop_repeat == 0) {
+					if (_GP(play).no_multiloop_repeat == 0) {
 						while ((loop > 0) &&
-							(views[view].loops[loop - 1].RunNextLoop()))
+							(_G(views)[view].loops[loop - 1].RunNextLoop()))
 							loop--;
 					}
 				}
 			}
-			wait = views[view].loops[loop].frames[frame].speed;
+			wait = _G(views)[view].loops[loop].frames[frame].speed;
 			// idle anim doesn't have speed stored cos animating==0
 			if (idleleft < 0)
 				wait += animspeed + 5;
@@ -379,64 +380,64 @@ void CharacterInfo::update_character_follower(int &aa, int &numSheep, int *follo
 	else if ((following >= 0) && (doing_nothing == 1)) {
 		short distaway = (followinfo >> 8) & 0x00ff;
 		// no character in this room
-		if ((game.chars[following].on == 0) || (on == 0));
+		if ((_GP(game).chars[following].on == 0) || (on == 0));
 		else if (room < 0) {
 			room++;
 			if (room == 0) {
 				// appear in the new room
-				room = game.chars[following].room;
-				x = play.entered_at_x;
-				y = play.entered_at_y;
+				room = _GP(game).chars[following].room;
+				x = _GP(play).entered_at_x;
+				y = _GP(play).entered_at_y;
 			}
 		}
 		// wait a bit, so we're not constantly walking
 		else if (Random(100) < (followinfo & 0x00ff));
 		// the followed character has changed room
-		else if ((room != game.chars[following].room)
-			&& (game.chars[following].on == 0))
+		else if ((room != _GP(game).chars[following].room)
+			&& (_GP(game).chars[following].on == 0))
 			;  // do nothing if the player isn't visible
-		else if (room != game.chars[following].room) {
+		else if (room != _GP(game).chars[following].room) {
 			prevroom = room;
-			room = game.chars[following].room;
+			room = _GP(game).chars[following].room;
 
 			if (room == displayed_room) {
 				// only move to the room-entered position if coming into
 				// the current room
-				if (play.entered_at_x > (thisroom.Width - 8)) {
-					x = thisroom.Width + 8;
-					y = play.entered_at_y;
-				} else if (play.entered_at_x < 8) {
+				if (_GP(play).entered_at_x > (_GP(thisroom).Width - 8)) {
+					x = _GP(thisroom).Width + 8;
+					y = _GP(play).entered_at_y;
+				} else if (_GP(play).entered_at_x < 8) {
 					x = -8;
-					y = play.entered_at_y;
-				} else if (play.entered_at_y > (thisroom.Height - 8)) {
-					y = thisroom.Height + 8;
-					x = play.entered_at_x;
-				} else if (play.entered_at_y < thisroom.Edges.Top + 8) {
-					y = thisroom.Edges.Top + 1;
-					x = play.entered_at_x;
+					y = _GP(play).entered_at_y;
+				} else if (_GP(play).entered_at_y > (_GP(thisroom).Height - 8)) {
+					y = _GP(thisroom).Height + 8;
+					x = _GP(play).entered_at_x;
+				} else if (_GP(play).entered_at_y < _GP(thisroom).Edges.Top + 8) {
+					y = _GP(thisroom).Edges.Top + 1;
+					x = _GP(play).entered_at_x;
 				} else {
 					// not at one of the edges
 					// delay for a few seconds to let the player move
-					room = -play.follow_change_room_timer;
+					room = -_GP(play).follow_change_room_timer;
 				}
 				if (room >= 0) {
-					walk_character(aa, play.entered_at_x, play.entered_at_y, 1, true);
+					walk_character(aa, _GP(play).entered_at_x, _GP(play).entered_at_y, 1, true);
 					doing_nothing = 0;
 				}
 			}
 		} else if (room != displayed_room) {
 			// if the characetr is following another character and
 			// neither is in the current room, don't try to move
-		} else if ((abs(game.chars[following].x - x) > distaway + 30) |
-			(abs(game.chars[following].y - y) > distaway + 30) |
+		} else if ((abs(_GP(game).chars[following].x - x) > distaway + 30) |
+			(abs(_GP(game).chars[following].y - y) > distaway + 30) |
 			((followinfo & 0x00ff) == 0)) {
 			// in same room
 			int goxoffs = (Random(50) - 25);
 			// make sure he's not standing on top of the other man
 			if (goxoffs < 0) goxoffs -= distaway;
 			else goxoffs += distaway;
-			walk_character(aa, game.chars[following].x + goxoffs,
-				game.chars[following].y + (Random(50) - 25), 0, true);
+			walk_character(aa, _GP(game).chars[following].x + goxoffs,
+				_GP(game).chars[following].y + (Random(50) - 25), 0, true);
 			doing_nothing = 0;
 		}
 	}
@@ -462,7 +463,7 @@ void CharacterInfo::update_character_idle(CharacterExtras *chex, int &doing_noth
 			Character_LockView(this, idleview + 1);
 			// SetCharView resets it to 0
 			idleleft = -2;
-			int maxLoops = views[idleview].numLoops;
+			int maxLoops = _G(views)[idleview].numLoops;
 			// if the char is set to "no diagonal loops", don't try
 			// to use diagonal idle loops either
 			if ((maxLoops > 4) && (useDiagonal(this)))
@@ -473,7 +474,7 @@ void CharacterInfo::update_character_idle(CharacterExtras *chex, int &doing_noth
 				do {
 					useloop = ::AGS::g_vm->getRandomNumber(maxLoops - 1);
 					// don't select a loop which is a continuation of a previous one
-				} while ((useloop > 0) && (views[idleview].loops[useloop - 1].RunNextLoop()));
+				} while ((useloop > 0) && (_G(views)[idleview].loops[useloop - 1].RunNextLoop()));
 			}
 			// Normal idle anim - just reset to loop 0 if not enough to
 			// use the current one

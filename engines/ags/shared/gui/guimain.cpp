@@ -34,7 +34,7 @@
 #include "ags/shared/util/stream.h"
 #include "ags/shared/util/string_utils.h"
 #include "ags/lib/std/algorithm.h"
-#include "ags/engine/globals.h"
+#include "ags/globals.h"
 
 namespace AGS3 {
 
@@ -226,7 +226,7 @@ void GUIMain::DrawAt(Bitmap *ds, int x, int y) {
 
 	SET_EIP(378)
 
-		if (BgImage > 0 && spriteset[BgImage] != nullptr)
+		if (BgImage > 0 && _GP(spriteset)[BgImage] != nullptr)
 			draw_gui_sprite(&subbmp, BgImage, 0, 0, false);
 
 	SET_EIP(379)
@@ -331,7 +331,7 @@ HError GUIMain::RebuildArray() {
 			return new Error(String::FromFormat("GUIMain (%d): invalid control ID %d in ref #%d", ID, thisnum, i));
 
 		if (thistype == kGUIButton)
-			_controls[i] = &guibuts[thisnum];
+			_controls[i] = &_GP(guibuts)[thisnum];
 		else if (thistype == kGUILabel)
 			_controls[i] = &guilabels[thisnum];
 		else if (thistype == kGUIInvWindow)
@@ -723,10 +723,10 @@ HError ReadGUI(std::vector<GUIMain> &theGuis, Stream *in, bool is_savegame) {
 	}
 
 	// buttons
-	numguibuts = in->ReadInt32();
-	guibuts.resize(numguibuts);
-	for (int i = 0; i < numguibuts; ++i) {
-		guibuts[i].ReadFromFile(in, GameGuiVersion);
+	_G(numguibuts) = in->ReadInt32();
+	_GP(guibuts).resize(_G(numguibuts));
+	for (int i = 0; i < _G(numguibuts); ++i) {
+		_GP(guibuts)[i].ReadFromFile(in, GameGuiVersion);
 	}
 	// labels
 	numguilabels = in->ReadInt32();
@@ -776,9 +776,9 @@ void WriteGUI(const std::vector<GUIMain> &theGuis, Stream *out) {
 	for (size_t i = 0; i < theGuis.size(); ++i) {
 		theGuis[i].WriteToFile(out);
 	}
-	out->WriteInt32(numguibuts);
-	for (int i = 0; i < numguibuts; ++i) {
-		guibuts[i].WriteToFile(out);
+	out->WriteInt32(_G(numguibuts));
+	for (int i = 0; i < _G(numguibuts); ++i) {
+		_GP(guibuts)[i].WriteToFile(out);
 	}
 	out->WriteInt32(numguilabels);
 	for (int i = 0; i < numguilabels; ++i) {

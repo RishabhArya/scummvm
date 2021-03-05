@@ -33,13 +33,14 @@
 #include "ags/engine/media/audio/audio_system.h"
 #include "ags/engine/platform/base/agsplatformdriver.h"
 #include "ags/shared/util/string_compat.h"
+#include "ags/globals.h"
 
 namespace AGS3 {
 
 void scrPlayVideo(const char *name, int skip, int flags) {
 	EndSkippingUntilCharStops();
 
-	if (play.fast_forward)
+	if (_GP(play).fast_forward)
 		return;
 	if (debug_flags & DBG_NOVIDEO)
 		return;
@@ -54,10 +55,10 @@ void scrPlayVideo(const char *name, int skip, int flags) {
 }
 
 void pause_sound_if_necessary_and_play_video(const char *name, int skip, int flags) {
-	int musplaying = play.cur_music_number, i;
+	int musplaying = _GP(play).cur_music_number, i;
 	int ambientWas[MAX_SOUND_CHANNELS];
 	for (i = 1; i < MAX_SOUND_CHANNELS; i++)
-		ambientWas[i] = ambient[i].channel;
+		ambientWas[i] = _GP(ambient)[i].channel;
 
 	if ((strlen(name) > 3) && (ags_stricmp(&name[strlen(name) - 3], "ogv") == 0)) {
 		play_theora_video(name, skip, flags, true);
@@ -80,7 +81,7 @@ void pause_sound_if_necessary_and_play_video(const char *name, int skip, int fla
 			newmusic(musplaying);
 		for (i = 1; i < MAX_SOUND_CHANNELS; i++) {
 			if (ambientWas[i] > 0)
-				PlayAmbientSound(ambientWas[i], ambient[i].num, ambient[i].vol, ambient[i].x, ambient[i].y);
+				PlayAmbientSound(ambientWas[i], _GP(ambient)[i].num, _GP(ambient)[i].vol, _GP(ambient)[i].x, _GP(ambient)[i].y);
 		}
 	}
 }

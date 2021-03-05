@@ -36,7 +36,10 @@
 
 namespace AGS3 {
 
-typedef Common::Array<intptr_t> ScriptMethodParams;
+class ScriptMethodParams : public Common::Array<intptr_t> {
+public:
+	NumberPtr _result;
+};
 
 // If the plugin isn't using DDraw, don't require the headers
 #ifndef DIRECTDRAW_VERSION
@@ -563,6 +566,8 @@ public:
 	// install a replacement renderer for the specified font number
 	AGSIFUNC(IAGSFontRenderer *) ReplaceFontRenderer(int fontNumber, IAGSFontRenderer *newRenderer);
 };
+
+extern void PluginSimulateMouseClick(int pluginButtonID);
 
 } // namespace AGS3
 

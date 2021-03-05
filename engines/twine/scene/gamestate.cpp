@@ -100,7 +100,7 @@ void GameState::initHeroVars() {
 	usingSabre = false;
 
 	_engine->_scene->sceneHero->body = BodyType::btNormal;
-	_engine->_scene->sceneHero->life = 50;
+	_engine->_scene->sceneHero->setLife(kActorMaxLife);
 	_engine->_scene->sceneHero->talkColor = COLOR_BRIGHT_BLUE;
 }
 
@@ -114,9 +114,9 @@ void GameState::initEngineVars() {
 	initGameStateVars();
 	initHeroVars();
 
-	_engine->_scene->newHeroX = 0x2000;
-	_engine->_scene->newHeroY = 0x1800;
-	_engine->_scene->newHeroZ = 0x2000;
+	_engine->_scene->newHeroPos.x = 0x2000;
+	_engine->_scene->newHeroPos.y = 0x1800;
+	_engine->_scene->newHeroPos.z = 0x2000;
 
 	_engine->_scene->currentSceneIdx = -1;
 	_engine->_scene->needChangeScene = LBA1SceneId::Citadel_Island_Prison;
@@ -187,14 +187,14 @@ bool GameState::loadGame(Common::SeekableReadStream *file) {
 
 	_engine->_actor->heroBehaviour = (HeroBehaviourType)file->readByte();
 	_engine->_actor->previousHeroBehaviour = _engine->_actor->heroBehaviour;
-	_engine->_scene->sceneHero->life = file->readByte();
-	inventoryNumKashes = file->readSint16LE();
+	_engine->_scene->sceneHero->setLife(file->readByte());
+	setKashes(file->readSint16LE());
 	magicLevelIdx = file->readByte();
-	inventoryMagicPoints = file->readByte();
-	inventoryNumLeafsBox = file->readByte();
-	_engine->_scene->newHeroX = file->readSint16LE();
-	_engine->_scene->newHeroY = file->readSint16LE();
-	_engine->_scene->newHeroZ = file->readSint16LE();
+	setMagicPoints(file->readByte());
+	setLeafBoxes(file->readByte());
+	_engine->_scene->newHeroPos.x = file->readSint16LE();
+	_engine->_scene->newHeroPos.y = file->readSint16LE();
+	_engine->_scene->newHeroPos.z = file->readSint16LE();
 	_engine->_scene->sceneHero->angle = ToAngle(file->readSint16LE());
 	_engine->_actor->previousHeroAngle = _engine->_scene->sceneHero->angle;
 	_engine->_scene->sceneHero->body = (BodyType)file->readByte();
@@ -206,7 +206,7 @@ bool GameState::loadGame(Common::SeekableReadStream *file) {
 	}
 	file->read(holomapFlags, NUM_LOCATIONS);
 
-	inventoryNumGas = file->readByte();
+	setGas(file->readByte());
 
 	const byte numInventoryFlags = file->readByte(); // number of used inventory items, always 28
 	if (numInventoryFlags != NUM_INVENTORY_ITEMS) {
@@ -215,7 +215,7 @@ bool GameState::loadGame(Common::SeekableReadStream *file) {
 	}
 	file->read(inventoryFlags, NUM_INVENTORY_ITEMS);
 
-	inventoryNumLeafs = file->readByte();
+	setLeafs(file->readByte());
 	usingSabre = file->readByte();
 
 	if (saveFileVersion == 4) {
@@ -239,7 +239,7 @@ bool GameState::saveGame(Common::WriteStream *file) {
 	if (sceneIdx == Polar_Island_end_scene || sceneIdx == Citadel_Island_end_sequence_1 || sceneIdx == Citadel_Island_end_sequence_2 || sceneIdx == Credits_List_Sequence) {
 		/* inventoryMagicPoints = 0x50 */
 		/* herobehaviour = 0 */
-		/* newherox = 0xffff */
+		/* newheropos.x = 0xffff */
 		sceneIdx = Polar_Island_Final_Battle;
 	}
 
@@ -260,9 +260,9 @@ bool GameState::saveGame(Common::WriteStream *file) {
 	file->writeByte(inventoryNumLeafsBox);
 	// we don't save the whole scene state - so we have to make sure that the hero is
 	// respawned at the start of the scene - and not at its current position
-	file->writeSint16LE(_engine->_scene->newHeroX);
-	file->writeSint16LE(_engine->_scene->newHeroY);
-	file->writeSint16LE(_engine->_scene->newHeroZ);
+	file->writeSint16LE(_engine->_scene->newHeroPos.x);
+	file->writeSint16LE(_engine->_scene->newHeroPos.y);
+	file->writeSint16LE(_engine->_scene->newHeroPos.z);
 	file->writeSint16LE(FromAngle(_engine->_scene->sceneHero->angle));
 	file->writeByte((uint8)_engine->_scene->sceneHero->body);
 
@@ -289,12 +289,12 @@ void GameState::setGameFlag(uint8 index, uint8 value) {
 	_gameStateFlags[index] = value;
 
 	// all 4 slap videos
-	if ((index == 200 || index == 201 || index == 202 || index == 215) &&
-		_gameStateFlags[200] != 0 && _gameStateFlags[201] != 0 && _gameStateFlags[202] != 0 && _gameStateFlags[215] != 0) {
+	if ((index == GAMEFLAG_VIDEO_BAFFE || index == GAMEFLAG_VIDEO_BAFFE2 || index == GAMEFLAG_VIDEO_BAFFE3 || index == GAMEFLAG_VIDEO_BAFFE5) &&
+		_gameStateFlags[GAMEFLAG_VIDEO_BAFFE] != 0 && _gameStateFlags[GAMEFLAG_VIDEO_BAFFE2] != 0 && _gameStateFlags[GAMEFLAG_VIDEO_BAFFE3] != 0 && _gameStateFlags[GAMEFLAG_VIDEO_BAFFE5] != 0) {
 		_engine->unlockAchievement("LBA_ACH_012");
 	}
 	// second video of ferry trip
-	if (index == 209) {
+	if (index == GAMEFLAG_VIDEO_BATEAU2) {
 		_engine->unlockAchievement("LBA_ACH_010");
 	}
 	if (index == (uint8)InventoryItems::kiUseSabre) {
@@ -306,9 +306,8 @@ void GameState::setGameFlag(uint8 index, uint8 value) {
 }
 
 void GameState::processFoundItem(int32 item) {
-	_engine->_grid->newCameraX = (_engine->_scene->sceneHero->x + BRICK_HEIGHT) / BRICK_SIZE;
-	_engine->_grid->newCameraY = (_engine->_scene->sceneHero->y + BRICK_HEIGHT) / BRICK_HEIGHT;
-	_engine->_grid->newCameraZ = (_engine->_scene->sceneHero->z + BRICK_HEIGHT) / BRICK_SIZE;
+	ScopedEngineFreeze freeze(_engine);
+	_engine->_grid->centerOnActor(_engine->_scene->sceneHero);
 
 	_engine->exitSceneryView();
 	// Hide hero in scene
@@ -318,30 +317,34 @@ void GameState::processFoundItem(int32 item) {
 
 	_engine->_screens->copyScreen(_engine->frontVideoBuffer, _engine->workVideoBuffer);
 
-	const int32 itemCameraX = _engine->_grid->newCameraX * BRICK_SIZE;
-	const int32 itemCameraY = _engine->_grid->newCameraY * BRICK_HEIGHT;
-	const int32 itemCameraZ = _engine->_grid->newCameraZ * BRICK_SIZE;
+	const int32 itemCameraX = _engine->_grid->newCamera.x * BRICK_SIZE;
+	const int32 itemCameraY = _engine->_grid->newCamera.y * BRICK_HEIGHT;
+	const int32 itemCameraZ = _engine->_grid->newCamera.z * BRICK_SIZE;
 
-	_engine->_renderer->renderIsoModel(_engine->_scene->sceneHero->x - itemCameraX, _engine->_scene->sceneHero->y - itemCameraY, _engine->_scene->sceneHero->z - itemCameraZ, ANGLE_0, ANGLE_45, ANGLE_0, _engine->_actor->bodyTable[_engine->_scene->sceneHero->entity]);
+	uint8 *bodyPtr = _engine->_actor->bodyTable[_engine->_scene->sceneHero->entity];
+	const int32 bodyX = _engine->_scene->sceneHero->pos.x - itemCameraX;
+	const int32 bodyY = _engine->_scene->sceneHero->pos.y - itemCameraY;
+	const int32 bodyZ = _engine->_scene->sceneHero->pos.z - itemCameraZ;
+	_engine->_renderer->renderIsoModel(bodyX, bodyY, bodyZ, ANGLE_0, ANGLE_45, ANGLE_0, bodyPtr);
 	_engine->_interface->setClip(_engine->_redraw->renderRect);
 
-	const int32 itemX = (_engine->_scene->sceneHero->x + BRICK_HEIGHT) / BRICK_SIZE;
-	int32 itemY = _engine->_scene->sceneHero->y / BRICK_HEIGHT;
+	const int32 itemX = (_engine->_scene->sceneHero->pos.x + BRICK_HEIGHT) / BRICK_SIZE;
+	int32 itemY = _engine->_scene->sceneHero->pos.y / BRICK_HEIGHT;
 	if (_engine->_scene->sceneHero->brickShape() != ShapeType::kNone) {
 		itemY++;
 	}
-	const int32 itemZ = (_engine->_scene->sceneHero->z + BRICK_HEIGHT) / BRICK_SIZE;
+	const int32 itemZ = (_engine->_scene->sceneHero->pos.z + BRICK_HEIGHT) / BRICK_SIZE;
 
 	_engine->_grid->drawOverModelActor(itemX, itemY, itemZ);
 	_engine->flip();
 
-	_engine->_renderer->projectPositionOnScreen(_engine->_scene->sceneHero->x - itemCameraX, _engine->_scene->sceneHero->y - itemCameraY, _engine->_scene->sceneHero->z - itemCameraZ);
-	_engine->_renderer->projPosY -= 150;
+	_engine->_renderer->projectPositionOnScreen(bodyX, bodyY, bodyZ);
+	_engine->_renderer->projPos.y -= 150;
 
-	const int32 boxTopLeftX = _engine->_renderer->projPosX - 65;
-	const int32 boxTopLeftY = _engine->_renderer->projPosY - 65;
-	const int32 boxBottomRightX = _engine->_renderer->projPosX + 65;
-	const int32 boxBottomRightY = _engine->_renderer->projPosY + 65;
+	const int32 boxTopLeftX = _engine->_renderer->projPos.x - 65;
+	const int32 boxTopLeftY = _engine->_renderer->projPos.y - 65;
+	const int32 boxBottomRightX = _engine->_renderer->projPos.x + 65;
+	const int32 boxBottomRightY = _engine->_renderer->projPos.y + 65;
 	const Common::Rect boxRect(boxTopLeftX, boxTopLeftY, boxBottomRightX, boxBottomRightY);
 	_engine->_sound->playSample(Samples::BigItemFound);
 
@@ -363,7 +366,7 @@ void GameState::processFoundItem(int32 item) {
 
 	AnimTimerDataStruct tmpAnimTimer = _engine->_scene->sceneHero->animTimerData;
 
-	_engine->_animations->stockAnimation(_engine->_actor->bodyTable[_engine->_scene->sceneHero->entity], &_engine->_scene->sceneHero->animTimerData);
+	_engine->_animations->stockAnimation(bodyPtr, &_engine->_scene->sceneHero->animTimerData);
 
 	int32 currentAnimState = 0;
 
@@ -380,23 +383,23 @@ void GameState::processFoundItem(int32 item) {
 
 		_engine->_interface->setClip(boxRect);
 
-		_engine->_menu->itemAngle[item] += 8;
+		_engine->_menu->itemAngle[item] += ANGLE_2;
 
-		_engine->_renderer->renderInventoryItem(_engine->_renderer->projPosX, _engine->_renderer->projPosY, _engine->_resources->inventoryTable[item], _engine->_menu->itemAngle[item], 10000);
+		_engine->_renderer->renderInventoryItem(_engine->_renderer->projPos.x, _engine->_renderer->projPos.y, _engine->_resources->inventoryTable[item], _engine->_menu->itemAngle[item], 10000);
 
 		_engine->_menu->drawBox(boxRect);
 		_engine->_redraw->addRedrawArea(boxRect);
 		_engine->_interface->resetClip();
 		initEngineProjections();
 
-		if (_engine->_animations->setModelAnimation(currentAnimState, currentAnimData, currentAnim, _engine->_actor->bodyTable[_engine->_scene->sceneHero->entity], &_engine->_scene->sceneHero->animTimerData)) {
+		if (_engine->_animations->setModelAnimation(currentAnimState, currentAnimData, currentAnim, bodyPtr, &_engine->_scene->sceneHero->animTimerData)) {
 			currentAnimState++; // keyframe
 			if (currentAnimState >= _engine->_animations->getNumKeyframes(currentAnim)) {
 				currentAnimState = _engine->_animations->getStartKeyframe(currentAnim);
 			}
 		}
 
-		_engine->_renderer->renderIsoModel(_engine->_scene->sceneHero->x - itemCameraX, _engine->_scene->sceneHero->y - itemCameraY, _engine->_scene->sceneHero->z - itemCameraZ, ANGLE_0, ANGLE_45, ANGLE_0, _engine->_actor->bodyTable[_engine->_scene->sceneHero->entity]);
+		_engine->_renderer->renderIsoModel(bodyX, bodyY, bodyZ, ANGLE_0, ANGLE_45, ANGLE_0, bodyPtr);
 		_engine->_interface->setClip(_engine->_redraw->renderRect);
 		_engine->_grid->drawOverModelActor(itemX, itemY, itemZ);
 		_engine->_redraw->addRedrawArea(_engine->_redraw->renderRect);
@@ -491,22 +494,19 @@ void GameState::processGameoverAnimation() {
 
 	// TODO: inSceneryView
 	_engine->setPalette(_engine->_screens->paletteRGBA);
+	_engine->flip();
 	_engine->_screens->copyScreen(_engine->frontVideoBuffer, _engine->workVideoBuffer);
 	uint8 *gameOverPtr = nullptr;
 	if (HQR::getAllocEntry(&gameOverPtr, Resources::HQR_RESS_FILE, RESSHQR_GAMEOVERMDL) == 0) {
 		return;
 	}
 
-	const int32 left = 120;
-	const int32 top = 120;
-	const int32 right = 519;
-	const int32 bottom = 359;
-	const Common::Rect rect(left, top, right, bottom);
 	Renderer::prepareIsoModel(gameOverPtr);
 	_engine->_sound->stopSamples();
 	_engine->_music->stopMidiMusic(); // stop fade music
 	_engine->_renderer->setCameraPosition(_engine->width() / 2, _engine->height() / 2, 128, 200, 200);
 	int32 startLbaTime = _engine->lbaTime;
+	const Common::Rect &rect = _engine->centerOnScreen(_engine->width() / 2, _engine->height() / 2);
 	_engine->_interface->setClip(rect);
 
 	while (!_engine->_input->toggleAbortAction() && (_engine->lbaTime - startLbaTime) <= 500) {
@@ -555,18 +555,72 @@ void GameState::giveUp() {
 }
 
 int16 GameState::setGas(int16 value) {
-	inventoryNumGas = MIN<int16>(100, value);
+	inventoryNumGas = CLIP<int16>(value, 0, 100);
 	return inventoryNumGas;
 }
 
+void GameState::addGas(int16 value) {
+	setGas(inventoryNumGas + value);
+}
+
 int16 GameState::setKashes(int16 value) {
-	inventoryNumKashes = MIN<int16>(999, value);
+	inventoryNumKashes = CLIP<int16>(value, 0, 999);
+	if (_engine->_gameState->inventoryNumKashes >= 500) {
+		_engine->unlockAchievement("LBA_ACH_011");
+	}
 	return inventoryNumKashes;
 }
 
 int16 GameState::setKeys(int16 value) {
-	inventoryNumKeys = value;
+	inventoryNumKeys = MAX<int16>(0, value);
 	return inventoryNumKeys;
+}
+
+void GameState::addKeys(int16 val) {
+	setKeys(inventoryNumKeys + val);
+}
+
+void GameState::addKashes(int16 val) {
+	setKashes(inventoryNumKashes + val);
+}
+
+int16 GameState::setMagicPoints(int16 val) {
+	inventoryMagicPoints = val;
+	if (inventoryMagicPoints > magicLevelIdx * 20) {
+		inventoryMagicPoints = magicLevelIdx * 20;
+	}
+	return inventoryMagicPoints;
+}
+
+void GameState::addMagicPoints(int16 val) {
+	setMagicPoints(inventoryMagicPoints + val);
+}
+
+int16 GameState::setLeafs(int16 val) {
+	inventoryNumLeafs = val;
+	if (inventoryNumLeafs > inventoryNumLeafsBox) {
+		inventoryNumLeafs = inventoryNumLeafsBox;
+	}
+	return inventoryNumLeafs;
+}
+
+void GameState::addLeafs(int16 val) {
+	setLeafs(inventoryNumLeafs + val);
+}
+
+int16 GameState::setLeafBoxes(int16 val) {
+	inventoryNumLeafsBox = val;
+	if (inventoryNumLeafsBox > 10) {
+		inventoryNumLeafsBox = 10;
+	}
+	if (inventoryNumLeafsBox == 5) {
+		_engine->unlockAchievement("LBA_ACH_003");
+	}
+	return inventoryNumLeafsBox;
+}
+
+void GameState::addLeafBoxes(int16 val) {
+	setLeafBoxes(inventoryNumLeafsBox + val);
 }
 
 } // namespace TwinE

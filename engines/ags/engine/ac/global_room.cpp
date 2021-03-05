@@ -38,22 +38,23 @@
 #include "ags/engine/debugging/debugger.h"
 #include "ags/engine/script/script.h"
 #include "ags/shared/util/math.h"
+#include "ags/globals.h"
 
 namespace AGS3 {
 
 using namespace Shared;
 
-extern GameState play;
-extern GameSetupStruct game;
+
+
 extern RoomStatus *croom;
 extern CharacterInfo *playerchar;
 extern int displayed_room;
 extern int in_enters_screen;
 extern int in_leaves_screen;
 extern int in_inv_screen, inv_screen_newroom;
-extern MoveList *mls;
+
 extern int gs_to_newroom;
-extern RoomStruct thisroom;
+
 
 void SetAmbientTint(int red, int green, int blue, int opacity, int luminance) {
 	if ((red < 0) || (green < 0) || (blue < 0) ||
@@ -64,20 +65,20 @@ void SetAmbientTint(int red, int green, int blue, int opacity, int luminance) {
 
 	debug_script_log("Set ambient tint RGB(%d,%d,%d) %d%%", red, green, blue, opacity);
 
-	play.rtint_enabled = opacity > 0;
-	play.rtint_red = red;
-	play.rtint_green = green;
-	play.rtint_blue = blue;
-	play.rtint_level = opacity;
-	play.rtint_light = (luminance * 25) / 10;
+	_GP(play).rtint_enabled = opacity > 0;
+	_GP(play).rtint_red = red;
+	_GP(play).rtint_green = green;
+	_GP(play).rtint_blue = blue;
+	_GP(play).rtint_level = opacity;
+	_GP(play).rtint_light = (luminance * 25) / 10;
 }
 
 void SetAmbientLightLevel(int light_level) {
 	light_level = Math::Clamp(light_level, -100, 100);
 
-	play.rtint_enabled = light_level != 0;
-	play.rtint_level = 0;
-	play.rtint_light = light_level;
+	_GP(play).rtint_enabled = light_level != 0;
+	_GP(play).rtint_level = 0;
+	_GP(play).rtint_light = light_level;
 }
 
 extern ScriptPosition last_in_dialog_request_script_pos;
@@ -97,9 +98,9 @@ void NewRoom(int nrnum) {
 
 	can_run_delayed_command();
 
-	if (play.stop_dialog_at_end != DIALOG_NONE) {
-		if (play.stop_dialog_at_end == DIALOG_RUNNING)
-			play.stop_dialog_at_end = DIALOG_NEWROOM + nrnum;
+	if (_GP(play).stop_dialog_at_end != DIALOG_NONE) {
+		if (_GP(play).stop_dialog_at_end == DIALOG_RUNNING)
+			_GP(play).stop_dialog_at_end = DIALOG_NEWROOM + nrnum;
 		else {
 			quitprintf("!NewRoom: two NewRoom/RunDialog/StopDialog requests within dialog; last was called in \"%s\", line %d",
 				last_in_dialog_request_script_pos.Section.GetCStr(), last_in_dialog_request_script_pos.Line);
@@ -119,20 +120,20 @@ void NewRoom(int nrnum) {
 	} else if (in_inv_screen) {
 		inv_screen_newroom = nrnum;
 		return;
-	} else if ((inside_script == 0) & (in_graph_script == 0)) {
+	} else if ((_G(inside_script) == 0) & (_G(in_graph_script) == 0)) {
 		new_room(nrnum, playerchar);
 		return;
-	} else if (inside_script) {
-		curscript->queue_action(ePSANewRoom, nrnum, "NewRoom");
+	} else if (_G(inside_script)) {
+		_G(curscript)->queue_action(ePSANewRoom, nrnum, "NewRoom");
 		// we might be within a MoveCharacterBlocking -- the room
 		// change should abort it
 		if ((playerchar->walking > 0) && (playerchar->walking < TURNING_AROUND)) {
 			// nasty hack - make sure it doesn't move the character
 			// to a walkable area
-			mls[playerchar->walking].direct = 1;
-			StopMoving(game.playercharacter);
+			_G(mls)[playerchar->walking].direct = 1;
+			StopMoving(_GP(game).playercharacter);
 		}
-	} else if (in_graph_script)
+	} else if (_G(in_graph_script))
 		gs_to_newroom = nrnum;
 }
 
@@ -144,10 +145,10 @@ void NewRoomEx(int nrnum, int newx, int newy) {
 void NewRoomNPC(int charid, int nrnum, int newx, int newy) {
 	if (!is_valid_character(charid))
 		quit("!NewRoomNPC: invalid character");
-	if (charid == game.playercharacter)
+	if (charid == _GP(game).playercharacter)
 		quit("!NewRoomNPC: use NewRoomEx with the player character");
 
-	Character_ChangeRoom(&game.chars[charid], nrnum, newx, newy);
+	Character_ChangeRoom(&_GP(game).chars[charid], nrnum, newx, newy);
 }
 
 void ResetRoom(int nrnum) {
@@ -178,12 +179,12 @@ int HasPlayerBeenInRoom(int roomnum) {
 void CallRoomScript(int value) {
 	can_run_delayed_command();
 
-	if (!inside_script)
+	if (!_G(inside_script))
 		quit("!CallRoomScript: not inside a script???");
 
-	play.roomscript_finished = 0;
+	_GP(play).roomscript_finished = 0;
 	RuntimeScriptValue rval_null;
-	curscript->run_another("on_call", kScInstRoom, 1, RuntimeScriptValue().SetInt32(value), rval_null);
+	_G(curscript)->run_another("on_call", kScInstRoom, 1, RuntimeScriptValue().SetInt32(value), rval_null);
 }
 
 int HasBeenToRoom(int roomnum) {
@@ -197,30 +198,30 @@ int HasBeenToRoom(int roomnum) {
 }
 
 void GetRoomPropertyText(const char *property, char *bufer) {
-	get_text_property(thisroom.Properties, croom->roomProps, property, bufer);
+	get_text_property(_GP(thisroom).Properties, croom->roomProps, property, bufer);
 }
 
 void SetBackgroundFrame(int frnum) {
-	if ((frnum < -1) || (frnum != -1 && (size_t)frnum >= thisroom.BgFrameCount))
+	if ((frnum < -1) || (frnum != -1 && (size_t)frnum >= _GP(thisroom).BgFrameCount))
 		quit("!SetBackgrondFrame: invalid frame number specified");
 	if (frnum < 0) {
-		play.bg_frame_locked = 0;
+		_GP(play).bg_frame_locked = 0;
 		return;
 	}
 
-	play.bg_frame_locked = 1;
+	_GP(play).bg_frame_locked = 1;
 
-	if (frnum == play.bg_frame) {
+	if (frnum == _GP(play).bg_frame) {
 		// already on this frame, do nothing
 		return;
 	}
 
-	play.bg_frame = frnum;
+	_GP(play).bg_frame = frnum;
 	on_background_frame_change();
 }
 
 int GetBackgroundFrame() {
-	return play.bg_frame;
+	return _GP(play).bg_frame;
 }
 
 } // namespace AGS3

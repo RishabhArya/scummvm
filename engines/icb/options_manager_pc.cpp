@@ -27,7 +27,6 @@
 
 #define FORBIDDEN_SYMBOL_EXCEPTION_time
 
-#include "engines/icb/common/px_rccommon.h"
 #include "engines/icb/icb.h"
 #include "engines/icb/options_manager_pc.h"
 #include "engines/icb/movie_pc.h"
@@ -107,7 +106,7 @@ void Init_play_movie(const char *param0, bool8 param1);
 uint32 GetFileSz(const char *path);
 
 // Translation tweaks
-_linked_data_file *LoadTranslatedFile(cstr session, cstr mission);
+_linked_data_file *LoadTranslatedFile(const char *session, const char *mission);
 
 // Death text functions and defines
 #define MAX_DEATH_TEXT 4
@@ -639,8 +638,6 @@ OptionsManager::OptionsManager() {
 
 	m_movieRect.left = m_movieRect.right = m_movieRect.top = m_movieRect.bottom = 0;
 
-	//m_colourKey = RGB(255, 0, 255); // WIN32
-	warning("TODO: Use a pixelformat and SDL_MapRGB here, m_colourKey set by hand for now");
 	m_colourKey = 0xFF00FF00;
 
 	m_moveLimiter = FALSE8;
@@ -1046,25 +1043,6 @@ void OptionsManager::LoadTitleScreenMovie() {
 	// Clean background res_man
 	rs_bg->Res_purge_all();
 
-	// Caculate memory needed for movie
-	uint32 movieSize = GetFileSz(filename);
-	if (movieSize == 0)
-		Fatal_error("Couldn't get filesize of title movie");
-#if 0
-	// Get the memory
-	uint32 moviehashID = 0xBEEF ;
-	uint32 nullhash = NULL_HASH ;
-	uint8 *mem = rs_bg->Res_alloc(moviehashID, filename, nullhash, movieSize) ;
-
-	// Open the movie file and read it straight into memory
-	Common::SeekableReadStream *movieStream = openDiskFileForBinaryStreamRead(filename.c_str()) ;
-	if (movieStream == NULL)
-		Fatal_error(pxVString("Failed to open movie file: %s for reading", (const char *)filename)) ;
-	if (movieStream->read(mem, movieSize) != movieSize)
-		Fatal_error("LoadTitleScreenMovie() failed to read from file") ;
-	// Close the file
-	delete movieStream;
-#endif
 	if (!g_personalSequenceManager->registerMovie(filename, FALSE8, TRUE8)) {
 		Fatal_error(pxVString("Couldn't register the title screen movie: %s", (const char *)filename));
 	}
@@ -3348,10 +3326,8 @@ void OptionsManager::DoChoice() {
 		case UP_CROUCH:
 			if (m_controlPage1) {
 				up_key = 0;
-				up_joy = 0xFF;
 			} else {
 				crouch_key = 0;
-				crouch_button = 0xFF;
 			}
 			m_awaitingKeyPress = TRUE8;
 			m_editing = TRUE8;
@@ -3361,10 +3337,8 @@ void OptionsManager::DoChoice() {
 		case DOWN_INTERACT:
 			if (m_controlPage1) {
 				down_key = 0;
-				down_joy = 0xFF;
 			} else {
 				interact_key = 0;
-				interact_button = 0xFF;
 			}
 			m_awaitingKeyPress = TRUE8;
 			m_editing = TRUE8;
@@ -3374,10 +3348,8 @@ void OptionsManager::DoChoice() {
 		case LEFT_ARM:
 			if (m_controlPage1) {
 				left_key = 0;
-				left_joy = 0xFF;
 			} else {
 				arm_key = 0;
-				arm_button = 0xFF;
 			}
 			m_awaitingKeyPress = TRUE8;
 			m_editing = TRUE8;
@@ -3387,10 +3359,8 @@ void OptionsManager::DoChoice() {
 		case RIGHT_ATTACK:
 			if (m_controlPage1) {
 				right_key = 0;
-				right_joy = 0xFF;
 			} else {
 				fire_key = 0;
-				fire_button = 0xFF;
 			}
 			m_awaitingKeyPress = TRUE8;
 			m_editing = TRUE8;
@@ -3400,10 +3370,8 @@ void OptionsManager::DoChoice() {
 		case RUN_INVENTORY:
 			if (m_controlPage1) {
 				run_key = 0;
-				run_button = 0xFF;
 			} else {
 				inventory_key = 0;
-				inventory_button = 0xFF;
 			}
 			m_awaitingKeyPress = TRUE8;
 			m_editing = TRUE8;
@@ -3413,10 +3381,8 @@ void OptionsManager::DoChoice() {
 		case SIDESTEP_REMORA:
 			if (m_controlPage1) {
 				sidestep_key = 0;
-				sidestep_button = 0xFF;
 			} else {
 				remora_key = 0;
-				remora_button = 0xFF;
 			}
 			m_awaitingKeyPress = TRUE8;
 			m_editing = TRUE8;
@@ -3425,7 +3391,6 @@ void OptionsManager::DoChoice() {
 
 		case PAUSE: // Can only select this on page 2 by default
 			pause_key = 0;
-			pause_button = 0xFF;
 			m_awaitingKeyPress = TRUE8;
 			m_editing = TRUE8;
 			Clear_DI_key_buffer();

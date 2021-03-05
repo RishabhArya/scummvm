@@ -26,22 +26,33 @@
 #include "ags/lib/std/vector.h"
 #include "ags/shared/core/types.h"
 #include "ags/shared/util/string.h"
+#include "ags/shared/ac/gamestructdefines.h"
 
 // TODO: we need to make some kind of TextManager class of this module
 
 namespace AGS3 {
-namespace AGS {
-namespace Shared {
-class Bitmap;
-} // namespace Shared
-} // namespace AGS
-
-using namespace AGS;
 
 class IAGSFontRenderer;
 class IAGSFontRenderer2;
 struct FontInfo;
 struct FontRenderParams;
+
+namespace AGS {
+namespace Shared {
+class Bitmap;
+
+struct Font {
+	IAGSFontRenderer *Renderer = nullptr;
+	IAGSFontRenderer2 *Renderer2 = nullptr;
+	FontInfo            Info;
+
+	Font();
+};
+
+} // namespace Shared
+} // namespace AGS
+
+using namespace AGS;
 
 void init_font_renderer();
 void shutdown_font_renderer();
@@ -130,11 +141,6 @@ private:
 // returns number of lines, or 0 if text cannot be split well to fit in this width
 size_t split_lines(const char *texx, SplitLines &lines, int width, int fontNumber, size_t max_lines = -1);
 
-namespace AGS {
-namespace Shared {
-extern SplitLines Lines;
-} // namespace Shared
-} // namespace AGS
 } // namespace AGS3
 
 #endif

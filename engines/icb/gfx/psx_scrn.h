@@ -30,9 +30,9 @@
 
 #include "engines/icb/gfx/psx_pcgpu.h"
 #include "engines/icb/gfx/psx_pcdefines.h"
-#include "engines/icb/common/px_assert.h"
-#include "engines/icb/common/px_maths.h"
 #include "engines/icb/gfx/psx_ot.h"
+
+#include "common/util.h"
 
 namespace ICB {
 
@@ -101,21 +101,18 @@ extern int packetsUsed;
 
 // How much to shift & then offset the z values from gte to
 // put them into the otlist
-extern int otz_shift;
-extern int otz_offset;
+extern int32 otz_shift;
+extern int32 otz_offset;
 
 // Enable/disable updating of the auto-sliding & scaling min,max z position
 extern int update_minmaxzpos;
 
 // Global graphics options for z-clipping and camera scalings
-extern int minZOTpos;
-extern int maxZOTpos;
-extern int minUsedZpos;
-extern int maxUsedZpos;
-extern int nearClip;
-extern int delayValue;
-extern int scale[3];
-extern int zscale;
+extern int32 minZOTpos;
+extern int32 maxZOTpos;
+extern int32 minUsedZpos;
+extern int32 maxUsedZpos;
+extern int32 nearClip;
 
 #if (_PSX_ON_PC == 0) && (_PSX == 1)
 
@@ -210,11 +207,11 @@ static inline void myAddDRLOADNoFlush(RECT16 *r, uint32 *pot, int length) {
 static inline int32 myMakeOTPosition(int32 z0) {
 	int32 z1 = (z0 >> otz_shift) - otz_offset;
 
-	minUsedZpos = PXmin(z0, minUsedZpos);
-	maxUsedZpos = PXmax(z0, maxUsedZpos);
+	minUsedZpos = MIN(z0, minUsedZpos);
+	maxUsedZpos = MAX(z0, maxUsedZpos);
 
-	z1 = PXmax(minZOTpos, z1);
-	z1 = PXmin(maxZOTpos, z1);
+	z1 = MAX(minZOTpos, z1);
+	z1 = MIN(maxZOTpos, z1);
 
 	return z1;
 }

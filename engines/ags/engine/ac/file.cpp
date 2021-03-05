@@ -45,18 +45,18 @@
 #include "ags/shared/util/path.h"
 #include "ags/shared/util/string.h"
 #include "ags/shared/util/string_utils.h"
-
 #include "ags/shared/debugging/out.h"
 #include "ags/engine/script/script_api.h"
 #include "ags/engine/script/script_runtime.h"
 #include "ags/engine/ac/dynobj/scriptstring.h"
+#include "ags/globals.h"
 
 namespace AGS3 {
 
 using namespace AGS::Shared;
 
 extern GameSetup usetup;
-extern GameSetupStruct game;
+
 extern AGSPlatformDriver *platform;
 
 extern int MAXSTRLEN;
@@ -265,7 +265,7 @@ String MakeSpecialSubDir(const String &sp_dir) {
 	String full_path = sp_dir;
 	if (full_path.GetLast() != '/' && full_path.GetLast() != '\\')
 		full_path.AppendChar('/');
-	full_path.Append(game.saveGameFolderName);
+	full_path.Append(_GP(game).saveGameFolderName);
 	Directory::CreateDirectory(full_path);
 	return full_path;
 }
@@ -554,7 +554,7 @@ AssetPath get_audio_clip_assetpath(int bundling_type, const String &filename) {
 	if (bundling_type == AUCL_BUNDLE_EXE)
 		return AssetPath(ResPaths.GamePak.Name, filename);
 	else if (bundling_type == AUCL_BUNDLE_VOX)
-		return AssetPath(game.GetAudioVOXName(), filename);
+		return AssetPath(_GP(game).GetAudioVOXName(), filename);
 	return AssetPath();
 }
 
@@ -612,7 +612,7 @@ Stream *get_valid_file_stream_from_handle(int32_t handle, const char *operation_
 //
 //=============================================================================
 
-extern ScriptString myScriptStringImpl;
+
 
 // int (const char *fnmm)
 RuntimeScriptValue Sc_File_Delete(const RuntimeScriptValue *params, int32_t param_count) {
@@ -656,7 +656,7 @@ RuntimeScriptValue Sc_File_ReadRawLine(void *self, const RuntimeScriptValue *par
 
 // const char* (sc_File *fil)
 RuntimeScriptValue Sc_File_ReadRawLineBack(void *self, const RuntimeScriptValue *params, int32_t param_count) {
-	API_CONST_OBJCALL_OBJ(sc_File, const char, myScriptStringImpl, File_ReadRawLineBack);
+	API_CONST_OBJCALL_OBJ(sc_File, const char, _GP(myScriptStringImpl), File_ReadRawLineBack);
 }
 
 // void (sc_File *fil, char *toread)
@@ -666,7 +666,7 @@ RuntimeScriptValue Sc_File_ReadString(void *self, const RuntimeScriptValue *para
 
 // const char* (sc_File *fil)
 RuntimeScriptValue Sc_File_ReadStringBack(void *self, const RuntimeScriptValue *params, int32_t param_count) {
-	API_CONST_OBJCALL_OBJ(sc_File, const char, myScriptStringImpl, File_ReadStringBack);
+	API_CONST_OBJCALL_OBJ(sc_File, const char, _GP(myScriptStringImpl), File_ReadStringBack);
 }
 
 // void (sc_File *fil, int towrite)

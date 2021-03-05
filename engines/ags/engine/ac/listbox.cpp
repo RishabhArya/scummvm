@@ -36,16 +36,17 @@
 #include "ags/engine/script/script_api.h"
 #include "ags/engine/script/script_runtime.h"
 #include "ags/engine/ac/dynobj/scriptstring.h"
+#include "ags/globals.h"
+#include "ags/ags.h"
 #include "common/fs.h"
 #include "common/savefile.h"
-#include "ags/ags.h"
 
 namespace AGS3 {
 
 using namespace AGS::Shared;
 
-extern GameState play;
-extern GameSetupStruct game;
+
+
 
 // *** LIST BOX FUNCTIONS
 
@@ -145,7 +146,7 @@ int ListBox_FillSaveGameList(GUIListBox *listbox) {
 
 	// update the global savegameindex[] array for backward compatibilty
 	for (nn = 0; nn < numsaves; nn++) {
-		play.filenumbers[nn] = listbox->SavedGameIndex[nn];
+		_GP(play).filenumbers[nn] = listbox->SavedGameIndex[nn];
 	}
 
 	guis_need_update = 1;
@@ -158,12 +159,12 @@ int ListBox_FillSaveGameList(GUIListBox *listbox) {
 
 int ListBox_GetItemAtLocation(GUIListBox *listbox, int x, int y) {
 
-	if (!guis[listbox->ParentId].IsDisplayed())
+	if (!_GP(guis)[listbox->ParentId].IsDisplayed())
 		return -1;
 
 	data_to_game_coords(&x, &y);
-	x = (x - listbox->X) - guis[listbox->ParentId].X;
-	y = (y - listbox->Y) - guis[listbox->ParentId].Y;
+	x = (x - listbox->X) - _GP(guis)[listbox->ParentId].X;
+	y = (y - listbox->Y) - _GP(guis)[listbox->ParentId].Y;
 
 	if ((x < 0) || (y < 0) || (x >= listbox->Width) || (y >= listbox->Height))
 		return -1;
@@ -215,7 +216,7 @@ int ListBox_GetFont(GUIListBox *listbox) {
 
 void ListBox_SetFont(GUIListBox *listbox, int newfont) {
 
-	if ((newfont < 0) || (newfont >= game.numfonts))
+	if ((newfont < 0) || (newfont >= _GP(game).numfonts))
 		quit("!ListBox.Font: invalid font number.");
 
 	if (newfont != listbox->Font) {
@@ -365,12 +366,12 @@ void ListBox_ScrollUp(GUIListBox *listbox) {
 
 
 GUIListBox *is_valid_listbox(int guin, int objn) {
-	if ((guin < 0) | (guin >= game.numgui)) quit("!ListBox: invalid GUI number");
-	if ((objn < 0) | (objn >= guis[guin].GetControlCount())) quit("!ListBox: invalid object number");
-	if (guis[guin].GetControlType(objn) != kGUIListBox)
+	if ((guin < 0) | (guin >= _GP(game).numgui)) quit("!ListBox: invalid GUI number");
+	if ((objn < 0) | (objn >= _GP(guis)[guin].GetControlCount())) quit("!ListBox: invalid object number");
+	if (_GP(guis)[guin].GetControlType(objn) != kGUIListBox)
 		quit("!ListBox: specified control is not a list box");
 	guis_need_update = 1;
-	return (GUIListBox *)guis[guin].GetControl(objn);
+	return (GUIListBox *)_GP(guis)[guin].GetControl(objn);
 }
 
 //=============================================================================
@@ -379,7 +380,7 @@ GUIListBox *is_valid_listbox(int guin, int objn) {
 //
 //=============================================================================
 
-extern ScriptString myScriptStringImpl;
+
 
 // int (GUIListBox *lbb, const char *text)
 RuntimeScriptValue Sc_ListBox_AddItem(void *self, const RuntimeScriptValue *params, int32_t param_count) {
@@ -408,7 +409,7 @@ RuntimeScriptValue Sc_ListBox_GetItemAtLocation(void *self, const RuntimeScriptV
 
 // char *(GUIListBox *listbox, int index, char *buffer)
 RuntimeScriptValue Sc_ListBox_GetItemText(void *self, const RuntimeScriptValue *params, int32_t param_count) {
-	API_OBJCALL_OBJ_PINT_POBJ(GUIListBox, char, myScriptStringImpl, ListBox_GetItemText, char);
+	API_OBJCALL_OBJ_PINT_POBJ(GUIListBox, char, _GP(myScriptStringImpl), ListBox_GetItemText, char);
 }
 
 // int (GUIListBox *lbb, int index, const char *text)
@@ -489,7 +490,7 @@ RuntimeScriptValue Sc_ListBox_GetItemCount(void *self, const RuntimeScriptValue 
 
 // const char* (GUIListBox *listbox, int index)
 RuntimeScriptValue Sc_ListBox_GetItems(void *self, const RuntimeScriptValue *params, int32_t param_count) {
-	API_CONST_OBJCALL_OBJ_PINT(GUIListBox, const char, myScriptStringImpl, ListBox_GetItems);
+	API_CONST_OBJCALL_OBJ_PINT(GUIListBox, const char, _GP(myScriptStringImpl), ListBox_GetItems);
 }
 
 // int (GUIListBox *listbox)

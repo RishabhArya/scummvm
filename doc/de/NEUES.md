@@ -6,7 +6,6 @@ Programmcodes finden Sie auf Englisch unter:
 
  Neue Spiele:
    - Unterstützung für Grim Fandango hinzugefügt.
-   - Unterstützung für Escape from Monkey Island hinzugefügt.
    - Unterstützung für The Longest Journey hinzugefügt.
    - Unterstützung für Myst 3: Exile hinzugefügt.
    - Unterstützung für Hades' Challenge hinzugefügt.
@@ -54,7 +53,7 @@ Programmcodes finden Sie auf Englisch unter:
    - Unterstützung für die hebräische Fan-Übersetzung von Legend of Kyrandia hinzugefügt.
 
  Lure:
-   - Die Feuer-Animation im ersten Raum wird nun auch nach dem Laden eines korrekt Spielstands abgespielt.
+   - Die Feuer-Animation im ersten Raum wird nun auch nach dem Laden eines Spielstands korrekt abgespielt.
    - Unterstützung für MT-32 korrigiert.
 
  SAGA:

@@ -25,8 +25,6 @@
  *
  */
 
-#include "engines/icb/common/px_rccommon.h"
-
 #include "engines/icb/p4_generic.h"
 #include "engines/icb/debug.h"
 #include "engines/icb/p4.h"
@@ -40,21 +38,6 @@
 
 namespace ICB {
 
-// Initialised to unset values
-// For mapping purposes
-uint8 up_joy = 0xFF;
-uint8 down_joy = 0xFF;
-uint8 left_joy = 0xFF;
-uint8 right_joy = 0xFF;
-uint8 sidestep_button = 0xFF;
-uint8 run_button = 0xFF;
-uint8 crouch_button = 0xFF;
-uint8 interact_button = 0xFF;
-uint8 arm_button = 0xFF;
-uint8 fire_button = 0xFF;
-uint8 inventory_button = 0xFF;
-uint8 remora_button = 0xFF;
-uint8 pause_button = 0xFF;
 bool8 keyboard_buf_scancodes[512]; // SDL_NUM_SCANCODES
 bool8 repeats_scancodes[512];      // SDL_NUM_SCANCODES
 
@@ -63,17 +46,6 @@ void Init_direct_input() {
 }
 
 void setKeyState(Common::KeyCode key, bool pressed) { keyboard_buf_scancodes[key] = pressed; }
-
-void Poll_direct_input() {
-	//warning("TODO: Fix Poll_direct_input");
-#if 0
-	int keys = 0;
-	const Uint8 *key_state = SDL_GetKeyboardState(&keys);
-	for (uint32 i = 0; i < keys; i++) {
-		keyboard_buf_scancodes[i] = key_state[i] ? TRUE8 : FALSE8;
-	}
-#endif
-}
 
 uint32 Get_DI_key_press() {
 	for (uint32 i = 0; i < 512; i++) {

@@ -47,6 +47,7 @@
 #include "twine/renderer/screens.h"
 #include "twine/resources/resources.h"
 #include "twine/scene/scene.h"
+#include "twine/shared.h"
 #include "twine/text.h"
 #include "twine/twine.h"
 
@@ -166,7 +167,7 @@ Menu::Menu(TwinEEngine *engine) {
 	advOptionsMenuState = _priv::createAdvancedOptionsMenu();
 
 	Common::fill(&behaviourAnimState[0], &behaviourAnimState[4], 0);
-	Common::fill(&itemAngle[0], &itemAngle[255], 0);
+	Common::fill(&itemAngle[0], &itemAngle[NUM_INVENTORY_ITEMS], 0);
 }
 
 Menu::~Menu() {
@@ -236,15 +237,15 @@ void Menu::processPlasmaEffect(const Common::Rect &rect, int32 color) {
 	_engine->frontVideoBuffer.blitFrom(_engine->imageBuffer, prect, rect);
 }
 
-void Menu::drawBox(const Common::Rect &rect) {
-	_engine->_interface->drawLine(rect.left, rect.top, rect.right, rect.top, COLOR_79);           // top line
-	_engine->_interface->drawLine(rect.left, rect.top, rect.left, rect.bottom, COLOR_79);         // left line
-	_engine->_interface->drawLine(rect.right, rect.top + 1, rect.right, rect.bottom, COLOR_73);   // right line
-	_engine->_interface->drawLine(rect.left + 1, rect.bottom, rect.right, rect.bottom, COLOR_73); // bottom line
+void Menu::drawBox(const Common::Rect &rect, int32 colorLeftTop, int32 colorRightBottom) {
+	_engine->_interface->drawLine(rect.left, rect.top, rect.right, rect.top, colorLeftTop);           // top line
+	_engine->_interface->drawLine(rect.left, rect.top, rect.left, rect.bottom, colorLeftTop);         // left line
+	_engine->_interface->drawLine(rect.right, rect.top + 1, rect.right, rect.bottom, colorRightBottom);   // right line
+	_engine->_interface->drawLine(rect.left + 1, rect.bottom, rect.right, rect.bottom, colorRightBottom); // bottom line
 }
 
-void Menu::drawBox(int32 left, int32 top, int32 right, int32 bottom) {
-	drawBox(Common::Rect(left, top, right, bottom));
+void Menu::drawBox(int32 left, int32 top, int32 right, int32 bottom, int32 colorLeftTop, int32 colorRightBottom) {
+	drawBox(Common::Rect(left, top, right, bottom), colorLeftTop, colorLeftTop);
 }
 
 void Menu::drawButtonGfx(const MenuSettings *menuSettings, const Common::Rect &rect, int32 buttonId, const char *dialText, bool hover) {
@@ -808,90 +809,109 @@ int32 Menu::giveupMenu() {
 	return 0;
 }
 
+void Menu::drawHealthBar(int32 left, int32 right, int32 top, int32 barLeftPadding, int32 barHeight) {
+	_engine->_grid->drawSprite(left, top + 3, _engine->_resources->spriteData[SPRITEHQR_LIFEPOINTS]);
+	const int32 barLeft = left + barLeftPadding;
+	const int32 healthBarRight = _engine->_screens->crossDot(barLeft, right, 50, _engine->_scene->sceneHero->life);
+	const int32 barBottom = top + barHeight;
+	_engine->_interface->drawFilledRect(Common::Rect(barLeft, top, healthBarRight, barBottom), COLOR_91);
+	drawBox(Common::Rect(barLeft, top, right, barBottom));
+}
+
+void Menu::drawCloverLeafs(int32 newBoxLeft, int32 boxRight, int32 top) {
+	// Clover leaf boxes
+	for (int32 i = 0; i < _engine->_gameState->inventoryNumLeafsBox; i++) {
+		const int32 leftSpritePos = _engine->_screens->crossDot(newBoxLeft, boxRight, 10, i);
+		_engine->_grid->drawSprite(leftSpritePos, top + 58, _engine->_resources->spriteData[SPRITEHQR_CLOVERLEAFBOX]);
+	}
+
+	// Clover leafs
+	for (int32 i = 0; i < _engine->_gameState->inventoryNumLeafs; i++) {
+		const int32 leftSpritePos = _engine->_screens->crossDot(newBoxLeft, boxRight, 10, i);
+		_engine->_grid->drawSprite(leftSpritePos + 2, top + 60, _engine->_resources->spriteData[SPRITEHQR_CLOVERLEAF]);
+	}
+}
+
+void Menu::drawMagicPointsBar(int32 left, int32 right, int32 top, int32 barLeftPadding, int32 barHeight) {
+	if (_engine->_gameState->inventoryDisabled()) {
+		return;
+	}
+	if (!_engine->_gameState->hasItem(InventoryItems::kiTunic)) {
+		return;
+	}
+	_engine->_grid->drawSprite(left, top + 1, _engine->_resources->spriteData[SPRITEHQR_MAGICPOINTS]);
+	if (_engine->_gameState->magicLevelIdx <= 0) {
+		return;
+	}
+	const int32 barLeft = left + barLeftPadding;
+	const int32 barBottom = top + barHeight;
+	const int32 barRight = _engine->_screens->crossDot(barLeft, right, 80, _engine->_gameState->inventoryMagicPoints);
+	const Common::Rect pointsRect(barLeft, top, barRight, barBottom);
+	_engine->_interface->drawFilledRect(pointsRect, COLOR_75);
+	drawBox(barLeft, top, barLeft + _engine->_gameState->magicLevelIdx * 80, barBottom);
+}
+
+void Menu::drawSpriteAndString(int32 left, int32 top, const SpriteData &spriteData, const Common::String &str, int32 color) {
+	_engine->_grid->drawSprite(left, top + 15, spriteData);
+	_engine->_text->setFontColor(color);
+	_engine->_text->drawText(left + 30, top + 5, str.c_str());
+}
+
+void Menu::drawCoins(int32 left, int32 top) {
+	const Common::String &inventoryNumKashes = Common::String::format("%d", _engine->_gameState->inventoryNumKashes);
+	drawSpriteAndString(left, top, _engine->_resources->spriteData[SPRITEHQR_KASHES], inventoryNumKashes);
+}
+
+void Menu::drawKeys(int32 left, int32 top) {
+	const Common::String &inventoryNumKeys = Common::String::format("%d", _engine->_gameState->inventoryNumKeys);
+	drawSpriteAndString(left, top, _engine->_resources->spriteData[SPRITEHQR_KEY], inventoryNumKeys);
+}
+
 void Menu::drawInfoMenu(int16 left, int16 top, int16 width) {
 	_engine->_interface->resetClip();
 	const int16 height = 80;
 	const Common::Rect rect(left, top, left + width, top + height);
 	drawBox(rect);
-	Common::Rect splittedBoxRect(rect);
-	splittedBoxRect.grow(-1);
-	_engine->_interface->drawFilledRect(splittedBoxRect, COLOR_BLACK);
+	Common::Rect filledRect(rect);
+	filledRect.grow(-1);
+	_engine->_interface->drawFilledRect(filledRect, COLOR_BLACK);
 
-	const int32 newBoxLeft2 = left + 9;
-
-	_engine->_grid->drawSprite(newBoxLeft2, top + 13, _engine->_resources->spriteData[SPRITEHQR_LIFEPOINTS]);
-
+	const int32 boxLeft = left + 9;
 	const int32 boxRight = left + 325;
-	const int32 newBoxLeft = left + 25;
-	int32 boxLeft = _engine->_screens->crossDot(newBoxLeft, boxRight, 50, _engine->_scene->sceneHero->life);
-
+	const int32 barPadding = 25;
 	const int32 boxTop = top + 10;
-	const int32 boxBottom = top + 25;
-	_engine->_interface->drawFilledRect(Common::Rect(newBoxLeft, boxTop, boxLeft, boxBottom), COLOR_91);
-	drawBox(newBoxLeft, boxTop, left + 324, boxTop + 14);
+	const int32 barHeight = 14;
+	drawHealthBar(boxLeft, boxRight, boxTop, barPadding, barHeight);
+	drawMagicPointsBar(boxLeft, boxRight, boxTop + 25, barPadding, barHeight);
 
-	if (!_engine->_gameState->inventoryDisabled() && _engine->_gameState->hasItem(InventoryItems::kiTunic)) {
-		_engine->_grid->drawSprite(newBoxLeft2, top + 36, _engine->_resources->spriteData[SPRITEHQR_MAGICPOINTS]);
-		if (_engine->_gameState->magicLevelIdx > 0) {
-			const int32 pointBoxRight = _engine->_screens->crossDot(newBoxLeft, boxRight, 80, _engine->_gameState->inventoryMagicPoints);
-			const Common::Rect pointsRect(newBoxLeft, top + 35, pointBoxRight, top + 50);
-			_engine->_interface->drawFilledRect(pointsRect, COLOR_75);
-			drawBox(newBoxLeft, top + 35, newBoxLeft + _engine->_gameState->magicLevelIdx * 80, top + 35 + 15);
-		}
-	}
-
-	boxLeft = left + 340;
-
-	/** draw coin sprite */
-	_engine->_grid->drawSprite(boxLeft, top + 15, _engine->_resources->spriteData[SPRITEHQR_KASHES]);
-	_engine->_text->setFontColor(COLOR_GOLD);
-	Common::String inventoryNumKashes = Common::String::format("%d", _engine->_gameState->inventoryNumKashes);
-	_engine->_text->drawText(left + 370, top + 5, inventoryNumKashes.c_str());
-
-	/** draw key sprite */
-	_engine->_grid->drawSprite(boxLeft, top + 55, _engine->_resources->spriteData[SPRITEHQR_KEY]);
-	_engine->_text->setFontColor(COLOR_GOLD);
-	Common::String inventoryNumKeys = Common::String::format("%d", _engine->_gameState->inventoryNumKeys);
-	_engine->_text->drawText(left + 370, top + 40, inventoryNumKeys.c_str());
-
-	// prevent
-	if (_engine->_gameState->inventoryNumLeafs > _engine->_gameState->inventoryNumLeafsBox) {
-		_engine->_gameState->inventoryNumLeafs = _engine->_gameState->inventoryNumLeafsBox;
-	}
-
-	// Clover leaf boxes
-	for (int32 i = 0; i < _engine->_gameState->inventoryNumLeafsBox; i++) {
-		_engine->_grid->drawSprite(_engine->_screens->crossDot(left + 25, left + 325, 10, i), top + 58, _engine->_resources->spriteData[SPRITEHQR_CLOVERLEAFBOX]);
-	}
-
-	// Clover leafs
-	for (int32 i = 0; i < _engine->_gameState->inventoryNumLeafs; i++) {
-		_engine->_grid->drawSprite(_engine->_screens->crossDot(left + 25, left + 325, 10, i) + 2, top + 60, _engine->_resources->spriteData[SPRITEHQR_CLOVERLEAF]);
-	}
+	const int32 posLeft = left + 340;
+	drawCoins(posLeft, top);
+	drawKeys(posLeft, top + 35);
+	drawCloverLeafs(left + barPadding, boxRight, top);
 
 	_engine->copyBlockPhys(left, top, left + width, top + 135);
 }
 
-Common::Rect Menu::calcBehaviourRect(HeroBehaviourType behaviour) const {
-	const int border = 110;
+Common::Rect Menu::calcBehaviourRect(int32 left, int32 top, HeroBehaviourType behaviour) const {
+	const int border = 10;
 	const int32 padding = 11;
 	const int32 width = 99;
 	const int height = 119;
 
-	const int32 boxLeft = (int32)behaviour * (width + padding) + border;
+	const int32 boxLeft = (int32)behaviour * (width + padding) + left + border;
 	const int32 boxRight = boxLeft + width;
-	const int32 boxTop = border;
+	const int32 boxTop = top + border;
 	const int32 boxBottom = boxTop + height;
 	return Common::Rect(boxLeft, boxTop, boxRight, boxBottom);
 }
 
-bool Menu::isBehaviourHovered(HeroBehaviourType behaviour) const {
-	const Common::Rect &boxRect = calcBehaviourRect(behaviour);
+bool Menu::isBehaviourHovered(int32 left, int32 top, HeroBehaviourType behaviour) const {
+	const Common::Rect &boxRect = calcBehaviourRect(left, top, behaviour);
 	return _engine->_input->isMouseHovering(boxRect);
 }
 
-void Menu::drawBehaviour(HeroBehaviourType behaviour, int32 angle, bool cantDrawBox, Common::Rect &dirtyRect) {
-	const Common::Rect &boxRect = calcBehaviourRect(behaviour);
+void Menu::drawBehaviour(int32 left, int32 top, HeroBehaviourType behaviour, int32 angle, bool cantDrawBox, Common::Rect &dirtyRect) {
+	const Common::Rect &boxRect = calcBehaviourRect(left, top, behaviour);
 
 	const int animIdx = _engine->_actor->heroAnimIdx[(byte)behaviour];
 	const uint8 *currentAnim = _engine->_resources->animTable[animIdx];
@@ -919,7 +939,7 @@ void Menu::drawBehaviour(HeroBehaviourType behaviour, int32 angle, bool cantDraw
 	if (behaviour == _engine->_actor->heroBehaviour) {
 		const int titleOffset = 10;
 		const int titleHeight = 40;
-		const int32 titleBoxLeft = 110;
+		const int32 titleBoxLeft = left + 10;
 		const int32 titleBoxWidth = 430;
 		const int32 titleBoxCenter = titleBoxLeft + titleBoxWidth / 2;
 		const int32 titleBoxRight = titleBoxLeft + titleBoxWidth;
@@ -955,13 +975,18 @@ void Menu::drawBehaviour(HeroBehaviourType behaviour, int32 angle, bool cantDraw
 	_engine->_interface->loadClip();
 }
 
-void Menu::prepareAndDrawBehaviour(int32 angle, HeroBehaviourType behaviour, Common::Rect &dirtyRect) {
+void Menu::prepareAndDrawBehaviour(int32 left, int32 top, int32 angle, HeroBehaviourType behaviour, Common::Rect &dirtyRect) {
 	_engine->_animations->setAnimAtKeyframe(behaviourAnimState[(byte)behaviour], _engine->_resources->animTable[_engine->_actor->heroAnimIdx[(byte)behaviour]], behaviourEntity, &behaviourAnimData[(byte)behaviour]);
-	drawBehaviour(behaviour, angle, false, dirtyRect);
+	drawBehaviour(left, top, behaviour, angle, false, dirtyRect);
 }
 
-void Menu::drawBehaviourMenu(int32 angle) {
-	const Common::Rect titleRect(100, 100, 550, 290);
+void Menu::drawBehaviourMenu(int32 left, int32 top, int32 angle) {
+	const int32 width = 450;
+	const int32 height = 190;
+	const int32 right = left + width;
+	const int32 bottom = top + height;
+
+	const Common::Rect titleRect(left, top, right, bottom);
 	drawBox(titleRect);
 
 	Common::Rect boxRect(titleRect);
@@ -969,10 +994,10 @@ void Menu::drawBehaviourMenu(int32 angle) {
 	_engine->_interface->drawTransparentBox(boxRect, 2);
 
 	Common::Rect ignoreRect;
-	prepareAndDrawBehaviour(angle, HeroBehaviourType::kNormal, ignoreRect);
-	prepareAndDrawBehaviour(angle, HeroBehaviourType::kAthletic, ignoreRect);
-	prepareAndDrawBehaviour(angle, HeroBehaviourType::kAggressive, ignoreRect);
-	prepareAndDrawBehaviour(angle, HeroBehaviourType::kDiscrete, ignoreRect);
+	prepareAndDrawBehaviour(left, top, angle, HeroBehaviourType::kNormal, ignoreRect);
+	prepareAndDrawBehaviour(left, top, angle, HeroBehaviourType::kAthletic, ignoreRect);
+	prepareAndDrawBehaviour(left, top, angle, HeroBehaviourType::kAggressive, ignoreRect);
+	prepareAndDrawBehaviour(left, top, angle, HeroBehaviourType::kDiscrete, ignoreRect);
 
 	_engine->copyBlockPhys(titleRect);
 
@@ -1002,7 +1027,9 @@ void Menu::processBehaviourMenu() {
 
 	_engine->_text->initTextBank(TextBankId::Options_and_menus);
 
-	drawBehaviourMenu(_engine->_scene->sceneHero->angle);
+	const int32 left = _engine->width() / 2 - 220;
+	const int32 top = _engine->height() / 2 - 140;
+	drawBehaviourMenu(left, top, _engine->_scene->sceneHero->angle);
 
 	HeroBehaviourType tmpHeroBehaviour = _engine->_actor->heroBehaviour;
 
@@ -1048,13 +1075,13 @@ void Menu::processBehaviourMenu() {
 
 		Common::Rect dirtyRect;
 		if (tmpHeroBehaviour != _engine->_actor->heroBehaviour) {
-			drawBehaviour(tmpHeroBehaviour, _engine->_scene->sceneHero->angle, true, dirtyRect);
+			drawBehaviour(left, top, tmpHeroBehaviour, _engine->_scene->sceneHero->angle, true, dirtyRect);
 			tmpHeroBehaviour = _engine->_actor->heroBehaviour;
 			_engine->_movements->setActorAngleSafe(_engine->_scene->sceneHero->angle, _engine->_scene->sceneHero->angle - ANGLE_90, ANGLE_17, &moveMenu);
 			_engine->_animations->setAnimAtKeyframe(behaviourAnimState[(byte)_engine->_actor->heroBehaviour], _engine->_resources->animTable[_engine->_actor->heroAnimIdx[(byte)_engine->_actor->heroBehaviour]], behaviourEntity, &behaviourAnimData[(byte)_engine->_actor->heroBehaviour]);
 		}
 
-		drawBehaviour(_engine->_actor->heroBehaviour, -1, true, dirtyRect);
+		drawBehaviour(left, top, _engine->_actor->heroBehaviour, -1, true, dirtyRect);
 		if (!dirtyRect.isEmpty()) {
 			_engine->copyBlockPhys(dirtyRect);
 		}
@@ -1071,33 +1098,28 @@ void Menu::processBehaviourMenu() {
 	_engine->_text->initSceneTextBank();
 }
 
-void Menu::drawMagicItemsBox(int32 left, int32 top, int32 right, int32 bottom, int32 color) { // Rect
-	_engine->_interface->drawLine(left, top, right, top, color);                              // top line
-	_engine->_interface->drawLine(left, top, left, bottom, color);                            // left line
-	_engine->_interface->drawLine(right, ++top, right, bottom, color);                        // right line
-	_engine->_interface->drawLine(++left, bottom, right, bottom, color);                      // bottom line
-}
+void Menu::drawItem(int32 left, int32 top, int32 item, Common::Rect &dirtyRect) {
+	const int32 itemWidth = 74;
+	const int32 itemHeight = 64;
+	const int32 itemPadding = 11;
+	const int32 itemWidthHalf = itemWidth / 2;
+	const int32 itemHeightHalf = itemHeight / 2;
+	const int32 itemX = (item / 4) * (itemWidth + itemPadding) + left + itemWidthHalf + itemPadding - 1;
+	const int32 itemY = (item % 4) * (itemHeight + itemPadding) + top + itemHeightHalf + itemPadding - 1;
+	const Common::Rect rect(itemX - itemWidthHalf, itemY - itemHeightHalf, itemX + itemWidthHalf, itemY + itemHeightHalf);
+	const int32 color = inventorySelectedItem == item ? inventorySelectedColor : COLOR_BLACK;
 
-void Menu::drawItem(int32 item, Common::Rect &dirtyRect) {
-	const int32 itemX = (item / 4) * 85 + 64;
-	const int32 itemY = (item & 3) * 75 + 52;
-
-	const int32 left = itemX - 37;
-	const int32 right = itemX + 37;
-	const int32 top = itemY - 32;
-	const int32 bottom = itemY + 32;
-	const Common::Rect rect(left, top, right, bottom);
-	_engine->_interface->drawFilledRect(rect, inventorySelectedItem == item ? inventorySelectedColor : COLOR_BLACK);
+	_engine->_interface->drawFilledRect(rect, color);
 
 	if (item < NUM_INVENTORY_ITEMS && _engine->_gameState->hasItem((InventoryItems)item) && (!_engine->_gameState->inventoryDisabled() || item == InventoryItems::kiCloverLeaf)) {
-		itemAngle[item] += 8;
+		itemAngle[item] += ANGLE_2;
 		_engine->_interface->setClip(rect);
 		_engine->_renderer->renderInventoryItem(itemX, itemY, _engine->_resources->inventoryTable[item], itemAngle[item], 15000);
 		_engine->_interface->resetClip();
-		if (item == InventoryItems::kGasItem) { // has GAS
+		if (item == InventoryItems::kGasItem) {
 			_engine->_text->setFontColor(COLOR_WHITE);
-			Common::String inventoryNumGas = Common::String::format("%d", _engine->_gameState->inventoryNumGas);
-			_engine->_text->drawText(left + 3, top + 32, inventoryNumGas.c_str());
+			const Common::String &inventoryNumGas = Common::String::format("%d", _engine->_gameState->inventoryNumGas);
+			_engine->_text->drawText(rect.left + 3, rect.bottom - 32, inventoryNumGas.c_str());
 		}
 	}
 
@@ -1109,16 +1131,16 @@ void Menu::drawItem(int32 item, Common::Rect &dirtyRect) {
 	}
 }
 
-void Menu::drawInventoryItems() {
-	const Common::Rect rect(17, 10, 622, 320);
+void Menu::drawInventoryItems(int32 left, int32 top) {
+	const Common::Rect rect(left, top, left + 605, top + 310);
 	_engine->_interface->drawTransparentBox(rect, 4);
 	drawBox(rect);
-	drawMagicItemsBox(110, 18, 188, 311, 75);
+	drawBox(left + 93, top + 8, left + 93 + 78, top + 8 + 293, COLOR_75, COLOR_75);
 	_engine->copyBlockPhys(rect);
 
 	Common::Rect dirtyRect;
 	for (int32 item = 0; item < NUM_INVENTORY_ITEMS; item++) {
-		drawItem(item, dirtyRect);
+		drawItem(left, top, item, dirtyRect);
 	}
 	if (!dirtyRect.isEmpty()) {
 		_engine->copyBlockPhys(dirtyRect);
@@ -1133,7 +1155,7 @@ void Menu::processInventoryMenu() {
 
 	_engine->_renderer->setLightVector(ANGLE_315, ANGLE_334, ANGLE_0);
 
-	inventorySelectedColor = 68;
+	inventorySelectedColor = COLOR_RED;
 
 	if (_engine->_gameState->inventoryNumLeafs > 0) {
 		_engine->_gameState->giveItem(InventoryItems::kiCloverLeaf);
@@ -1141,7 +1163,9 @@ void Menu::processInventoryMenu() {
 		//	_engine->_gameState->removeItem(InventoryItems::kiCloverLeaf);
 	}
 
-	drawInventoryItems();
+	const int32 left = _engine->width() / 2 - 303;
+	const int32 top = _engine->height() / 2 - 210;
+	drawInventoryItems(left, top);
 
 	_engine->_text->initTextBank(TextBankId::Inventory_Intro_and_Holomap);
 
@@ -1151,9 +1175,7 @@ void Menu::processInventoryMenu() {
 	ProgressiveTextState textState = ProgressiveTextState::ContinueRunning;
 	bool updateItemText = true;
 
-#if 0
-	ScopedCursor scopedCursor(_engine);
-#endif
+	//ScopedCursor scopedCursor(_engine);
 	ScopedKeyMap scopedKeyMap(_engine, uiKeyMapId);
 	for (;;) {
 		FrameMarker frame;
@@ -1176,28 +1198,28 @@ void Menu::processInventoryMenu() {
 			if (inventorySelectedItem >= NUM_INVENTORY_ITEMS) {
 				inventorySelectedItem = 0;
 			}
-			drawItem(prevSelectedItem, dirtyRect);
+			drawItem(left, top, prevSelectedItem, dirtyRect);
 			updateItemText = true;
 		} else if (cursorUp) {
 			inventorySelectedItem--;
 			if (inventorySelectedItem < 0) {
 				inventorySelectedItem = NUM_INVENTORY_ITEMS - 1;
 			}
-			drawItem(prevSelectedItem, dirtyRect);
+			drawItem(left, top, prevSelectedItem, dirtyRect);
 			updateItemText = true;
 		} else if (cursorLeft) {
 			inventorySelectedItem -= 4;
 			if (inventorySelectedItem < 0) {
 				inventorySelectedItem += NUM_INVENTORY_ITEMS;
 			}
-			drawItem(prevSelectedItem, dirtyRect);
+			drawItem(left, top, prevSelectedItem, dirtyRect);
 			updateItemText = true;
 		} else if (cursorRight) {
 			inventorySelectedItem += 4;
 			if (inventorySelectedItem >= NUM_INVENTORY_ITEMS) {
 				inventorySelectedItem -= NUM_INVENTORY_ITEMS;
 			}
-			drawItem(prevSelectedItem, dirtyRect);
+			drawItem(left, top, prevSelectedItem, dirtyRect);
 			updateItemText = true;
 		}
 
@@ -1229,12 +1251,12 @@ void Menu::processInventoryMenu() {
 			}
 		}
 
-		drawItem(inventorySelectedItem, dirtyRect);
+		drawItem(left, top, inventorySelectedItem, dirtyRect);
 
 		if (inventorySelectedItem < NUM_INVENTORY_ITEMS && _engine->_input->toggleActionIfActive(TwinEActionType::UIEnter) && _engine->_gameState->hasItem((InventoryItems)inventorySelectedItem) && !_engine->_gameState->inventoryDisabled()) {
 			_engine->loopInventoryItem = inventorySelectedItem;
-			inventorySelectedColor = 91;
-			drawItem(inventorySelectedItem, dirtyRect);
+			inventorySelectedColor = COLOR_91;
+			drawItem(left, top, inventorySelectedItem, dirtyRect);
 			if (!dirtyRect.isEmpty()) {
 				_engine->copyBlockPhys(dirtyRect);
 			}

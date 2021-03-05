@@ -33,18 +33,17 @@
 #include "ags/engine/debugging/debug_log.h"
 #include "ags/engine/script/runtimescriptvalue.h"
 #include "ags/shared/util/string_compat.h"
-
 #include "ags/shared/debugging/out.h"
 #include "ags/engine/script/script_api.h"
 #include "ags/engine/script/script_runtime.h"
 #include "ags/engine/ac/math.h"
+#include "ags/globals.h"
 
 namespace AGS3 {
 
-extern GameSetupStruct game;
-extern GameState play;
+
 extern int longestline;
-extern ScriptString myScriptStringImpl;
+
 
 int String_IsNullOrEmpty(const char *thisString) {
 	if ((thisString == nullptr) || (thisString[0] == 0))
@@ -235,7 +234,7 @@ DynObjectRef CreateNewScriptStringObj(const char *fromText, bool reAllocate) {
 
 size_t break_up_text_into_lines(const char *todis, SplitLines &lines, int wii, int fonnt, size_t max_lines) {
 	if (fonnt == -1)
-		fonnt = play.normal_font;
+		fonnt = _GP(play).normal_font;
 
 	//  char sofar[100];
 	if (todis[0] == '&') {
@@ -255,7 +254,7 @@ size_t break_up_text_into_lines(const char *todis, SplitLines &lines, int wii, i
 
 	// Right-to-left just means reverse the text then
 	// write it as normal
-	if (game.options[OPT_RIGHTLEFTWRITE])
+	if (_GP(game).options[OPT_RIGHTLEFTWRITE])
 		for (size_t rr = 0; rr < lines.Count(); rr++) {
 			lines[rr].Reverse();
 			line_length = wgettextwidth_compensate(lines[rr], fonnt);
@@ -273,8 +272,8 @@ size_t break_up_text_into_lines(const char *todis, SplitLines &lines, int wii, i
 int MAXSTRLEN = MAX_MAXSTRLEN;
 void check_strlen(char *ptt) {
 	MAXSTRLEN = MAX_MAXSTRLEN;
-	const byte *charstart = (const byte *)&game.chars[0];
-	const byte *charend = charstart + sizeof(CharacterInfo) * game.numcharacters;
+	const byte *charstart = (const byte *)&_GP(game).chars[0];
+	const byte *charend = charstart + sizeof(CharacterInfo) * _GP(game).numcharacters;
 	if (((const byte *)&ptt[0] >= charstart) && ((const byte *)&ptt[0] <= charend))
 		MAXSTRLEN = 30;
 }
@@ -310,12 +309,12 @@ RuntimeScriptValue Sc_String_IsNullOrEmpty(const RuntimeScriptValue *params, int
 
 // const char* (const char *thisString, const char *extrabit)
 RuntimeScriptValue Sc_String_Append(void *self, const RuntimeScriptValue *params, int32_t param_count) {
-	API_CONST_OBJCALL_OBJ_POBJ(const char, const char, myScriptStringImpl, String_Append, const char);
+	API_CONST_OBJCALL_OBJ_POBJ(const char, const char, _GP(myScriptStringImpl), String_Append, const char);
 }
 
 // const char* (const char *thisString, char extraOne)
 RuntimeScriptValue Sc_String_AppendChar(void *self, const RuntimeScriptValue *params, int32_t param_count) {
-	API_CONST_OBJCALL_OBJ_PINT(const char, const char, myScriptStringImpl, String_AppendChar);
+	API_CONST_OBJCALL_OBJ_PINT(const char, const char, _GP(myScriptStringImpl), String_AppendChar);
 }
 
 // int (const char *thisString, const char *otherString, bool caseSensitive)
@@ -330,7 +329,7 @@ RuntimeScriptValue Sc_StrContains(void *self, const RuntimeScriptValue *params, 
 
 // const char* (const char *srcString)
 RuntimeScriptValue Sc_String_Copy(void *self, const RuntimeScriptValue *params, int32_t param_count) {
-	API_CONST_OBJCALL_OBJ(const char, const char, myScriptStringImpl, String_Copy);
+	API_CONST_OBJCALL_OBJ(const char, const char, _GP(myScriptStringImpl), String_Copy);
 }
 
 // int (const char *thisString, const char *checkForString, bool caseSensitive)
@@ -341,22 +340,22 @@ RuntimeScriptValue Sc_String_EndsWith(void *self, const RuntimeScriptValue *para
 // const char* (const char *texx, ...)
 RuntimeScriptValue Sc_String_Format(const RuntimeScriptValue *params, int32_t param_count) {
 	API_SCALL_SCRIPT_SPRINTF(String_Format, 1);
-	return RuntimeScriptValue().SetDynamicObject(const_cast<char *>(CreateNewScriptString(scsf_buffer)), &myScriptStringImpl);
+	return RuntimeScriptValue().SetDynamicObject(const_cast<char *>(CreateNewScriptString(scsf_buffer)), &_GP(myScriptStringImpl));
 }
 
 // const char* (const char *thisString)
 RuntimeScriptValue Sc_String_LowerCase(void *self, const RuntimeScriptValue *params, int32_t param_count) {
-	API_CONST_OBJCALL_OBJ(const char, const char, myScriptStringImpl, String_LowerCase);
+	API_CONST_OBJCALL_OBJ(const char, const char, _GP(myScriptStringImpl), String_LowerCase);
 }
 
 // const char* (const char *thisString, const char *lookForText, const char *replaceWithText, bool caseSensitive)
 RuntimeScriptValue Sc_String_Replace(void *self, const RuntimeScriptValue *params, int32_t param_count) {
-	API_CONST_OBJCALL_OBJ_POBJ2_PBOOL(const char, const char, myScriptStringImpl, String_Replace, const char, const char);
+	API_CONST_OBJCALL_OBJ_POBJ2_PBOOL(const char, const char, _GP(myScriptStringImpl), String_Replace, const char, const char);
 }
 
 // const char* (const char *thisString, int index, char newChar)
 RuntimeScriptValue Sc_String_ReplaceCharAt(void *self, const RuntimeScriptValue *params, int32_t param_count) {
-	API_CONST_OBJCALL_OBJ_PINT2(const char, const char, myScriptStringImpl, String_ReplaceCharAt);
+	API_CONST_OBJCALL_OBJ_PINT2(const char, const char, _GP(myScriptStringImpl), String_ReplaceCharAt);
 }
 
 // int (const char *thisString, const char *checkForString, bool caseSensitive)
@@ -366,17 +365,17 @@ RuntimeScriptValue Sc_String_StartsWith(void *self, const RuntimeScriptValue *pa
 
 // const char* (const char *thisString, int index, int length)
 RuntimeScriptValue Sc_String_Substring(void *self, const RuntimeScriptValue *params, int32_t param_count) {
-	API_CONST_OBJCALL_OBJ_PINT2(const char, const char, myScriptStringImpl, String_Substring);
+	API_CONST_OBJCALL_OBJ_PINT2(const char, const char, _GP(myScriptStringImpl), String_Substring);
 }
 
 // const char* (const char *thisString, int length)
 RuntimeScriptValue Sc_String_Truncate(void *self, const RuntimeScriptValue *params, int32_t param_count) {
-	API_CONST_OBJCALL_OBJ_PINT(const char, const char, myScriptStringImpl, String_Truncate);
+	API_CONST_OBJCALL_OBJ_PINT(const char, const char, _GP(myScriptStringImpl), String_Truncate);
 }
 
 // const char* (const char *thisString)
 RuntimeScriptValue Sc_String_UpperCase(void *self, const RuntimeScriptValue *params, int32_t param_count) {
-	API_CONST_OBJCALL_OBJ(const char, const char, myScriptStringImpl, String_UpperCase);
+	API_CONST_OBJCALL_OBJ(const char, const char, _GP(myScriptStringImpl), String_UpperCase);
 }
 
 // FLOAT_RETURN_TYPE (const char *theString);

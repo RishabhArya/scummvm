@@ -20,14 +20,34 @@
  *
  */
 
-#ifndef AGS_ENGINE_AC_GLOBAL_PLUGIN_H
-#define AGS_ENGINE_AC_GLOBAL_PLUGIN_H
+#include "engines/advancedDetector.h"
 
-namespace AGS3 {
+#include "private/private.h"
 
-void PluginSimulateMouseClick(int pluginButtonID);
-bool RegisterPluginStubs(const char *name);
+class PrivateMetaEngine : public AdvancedMetaEngine {
+public:
+	const char *getName() const override {
+		return "private";
+	}
 
-} // namespace AGS3
+	Common::Error createInstance(OSystem *syst, Engine **engine, const ADGameDescription *desc) const override;
+};
 
+Common::Error PrivateMetaEngine::createInstance(OSystem *syst, Engine **engine, const ADGameDescription *gd) const {
+	*engine = new Private::PrivateEngine(syst, gd);
+	return Common::kNoError;
+}
+
+namespace Private {
+
+bool PrivateEngine::isDemo() const {
+	return (bool)(_gameDescription->flags & ADGF_DEMO);
+}
+
+} // End of namespace Private
+
+#if PLUGIN_ENABLED_DYNAMIC(PRIVATE)
+REGISTER_PLUGIN_DYNAMIC(PRIVATE, PLUGIN_TYPE_ENGINE, PrivateMetaEngine);
+#else
+REGISTER_PLUGIN_STATIC(PRIVATE, PLUGIN_TYPE_ENGINE, PrivateMetaEngine);
 #endif

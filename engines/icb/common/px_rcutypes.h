@@ -28,13 +28,9 @@
 #ifndef ICB_RCUTYPES_H
 #define ICB_RCUTYPES_H
 
-#include "engines/icb/common/px_rccommon.h" // This should be included in every file before anything else
-
 #include "common/scummsys.h"
 
 namespace ICB {
-
-typedef const char *cstr;
 
 // Definition of a boolean value that can be used across the PC and PSX.  I stopped true being 0xff because
 // C++ weak typing allows you to assign a bool8 to an int8 without warning, whereupon '==' fails for TRUE8 because

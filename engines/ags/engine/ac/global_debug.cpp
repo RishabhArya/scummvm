@@ -46,25 +46,25 @@
 #include "ags/shared/gfx/bitmap.h"
 #include "ags/engine/gfx/graphicsdriver.h"
 #include "ags/engine/main/graphics_mode.h"
-#include "ags/engine/globals.h"
+#include "ags/globals.h"
 
 namespace AGS3 {
 
 using namespace AGS::Shared;
 using namespace AGS::Engine;
 
-extern GameSetupStruct game;
+
 extern GameSetup usetup;
-extern GameState play;
-extern RoomStruct thisroom;
+
+
 extern CharacterInfo *playerchar;
 
 extern int convert_16bit_bgr;
 extern IGraphicsDriver *gfxDriver;
-extern SpriteCache spriteset;
+
 extern TreeMap *transtree;
 extern int displayed_room, starting_room;
-extern MoveList *mls;
+
 extern char transFileName[MAX_PATH];
 
 String GetRuntimeInfo() {
@@ -76,15 +76,15 @@ String GetRuntimeInfo() {
 		"[Game resolution %d x %d (%d-bit)"
 		"[Running %d x %d at %d-bit%s%s[GFX: %s; %s[Draw frame %d x %d["
 		"Sprite cache size: %d KB (limit %d KB; %d locked)",
-		_G(EngineVersion).LongString.GetCStr(), game.GetGameRes().Width, game.GetGameRes().Height, game.GetColorDepth(),
+		_G(EngineVersion).LongString.GetCStr(), _GP(game).GetGameRes().Width, _GP(game).GetGameRes().Height, _GP(game).GetColorDepth(),
 		mode.Width, mode.Height, mode.ColorDepth, (convert_16bit_bgr) ? " BGR" : "",
 		mode.Windowed ? " W" : "",
 		gfxDriver->GetDriverName(), filter->GetInfo().Name.GetCStr(),
 		render_frame.GetWidth(), render_frame.GetHeight(),
-		spriteset.GetCacheSize() / 1024, spriteset.GetMaxCacheSize() / 1024, spriteset.GetLockedSize() / 1024);
-	if (play.separate_music_lib)
+		_GP(spriteset).GetCacheSize() / 1024, _GP(spriteset).GetMaxCacheSize() / 1024, _GP(spriteset).GetLockedSize() / 1024);
+	if (_GP(play).separate_music_lib)
 		runtimeInfo.Append("[AUDIO.VOX enabled");
-	if (play.want_speech >= 1)
+	if (_GP(play).want_speech >= 1)
 		runtimeInfo.Append("[SPEECH.VOX enabled");
 	if (transtree != nullptr) {
 		runtimeInfo.Append("[Using translation ");
@@ -95,30 +95,30 @@ String GetRuntimeInfo() {
 }
 
 void script_debug(int cmdd, int dataa) {
-	if (play.debug_mode == 0) return;
+	if (_GP(play).debug_mode == 0) return;
 	int rr;
 	if (cmdd == 0) {
-		for (rr = 1; rr < game.numinvitems; rr++)
+		for (rr = 1; rr < _GP(game).numinvitems; rr++)
 			playerchar->inv[rr] = 1;
 		update_invorder();
-		//    Display("invorder decided there are %d items[display %d",play.inv_numorder,play.inv_numdisp);
+		//    Display("invorder decided there are %d items[display %d",_GP(play).inv_numorder,_GP(play).inv_numdisp);
 	} else if (cmdd == 1) {
 		String toDisplay = GetRuntimeInfo();
 		Display(toDisplay.GetCStr());
 		//    Display("shftR: %d  shftG: %d  shftB: %d", _rgb_r_shift_16, _rgb_g_shift_16, _rgb_b_shift_16);
 		//    Display("Remaining memory: %d kb",_go32_dpmi_remaining_virtual_memory()/1024);
-		//Display("Play char bcd: %d",->GetColorDepth(spriteset[views[playerchar->view].frames[playerchar->loop][playerchar->frame].pic]));
+		//Display("Play char bcd: %d",->GetColorDepth(_GP(spriteset)[_G(views)[playerchar->view].frames[playerchar->loop][playerchar->frame].pic]));
 	} else if (cmdd == 2) {
 		// show walkable areas from here
 		// TODO: support multiple viewports?!
 		const int viewport_index = 0;
 		const int camera_index = 0;
-		Bitmap *tempw = BitmapHelper::CreateBitmap(thisroom.WalkAreaMask->GetWidth(), thisroom.WalkAreaMask->GetHeight());
+		Bitmap *tempw = BitmapHelper::CreateBitmap(_GP(thisroom).WalkAreaMask->GetWidth(), _GP(thisroom).WalkAreaMask->GetHeight());
 		tempw->Blit(prepare_walkable_areas(-1), 0, 0, 0, 0, tempw->GetWidth(), tempw->GetHeight());
-		const Rect &viewport = play.GetRoomViewport(viewport_index)->GetRect();
-		const Rect &camera = play.GetRoomCamera(camera_index)->GetRect();
+		const Rect &viewport = _GP(play).GetRoomViewport(viewport_index)->GetRect();
+		const Rect &camera = _GP(play).GetRoomCamera(camera_index)->GetRect();
 		Bitmap *view_bmp = BitmapHelper::CreateBitmap(viewport.GetWidth(), viewport.GetHeight());
-		Rect mask_src = Rect(camera.Left / thisroom.MaskResolution, camera.Top / thisroom.MaskResolution, camera.Right / thisroom.MaskResolution, camera.Bottom / thisroom.MaskResolution);
+		Rect mask_src = Rect(camera.Left / _GP(thisroom).MaskResolution, camera.Top / _GP(thisroom).MaskResolution, camera.Right / _GP(thisroom).MaskResolution, camera.Bottom / _GP(thisroom).MaskResolution);
 		view_bmp->StretchBlt(tempw, mask_src, RectWH(0, 0, viewport.GetWidth(), viewport.GetHeight()), Shared::kBitmap_Transparency);
 
 		IDriverDependantBitmap *ddb = gfxDriver->CreateDDBFromBitmap(view_bmp, false, true);
@@ -131,7 +131,7 @@ void script_debug(int cmdd, int dataa) {
 		invalidate_screen();
 	} else if (cmdd == 3) {
 		int goToRoom = -1;
-		if (game.roomCount == 0) {
+		if (_GP(game).roomCount == 0) {
 			char inroomtex[80];
 			sprintf(inroomtex, "!Enter new room: (in room %d)", displayed_room);
 			setup_for_dialog();
@@ -139,7 +139,7 @@ void script_debug(int cmdd, int dataa) {
 			restore_after_dialog();
 		} else {
 			setup_for_dialog();
-			goToRoom = roomSelectorWindow(displayed_room, game.roomCount, game.roomNumbers, game.roomNames);
+			goToRoom = roomSelectorWindow(displayed_room, _GP(game).roomCount, _GP(game).roomNumbers, _GP(game).roomNames);
 			restore_after_dialog();
 		}
 		if (goToRoom >= 0)
@@ -148,16 +148,16 @@ void script_debug(int cmdd, int dataa) {
 		if (display_fps != kFPS_Forced)
 			display_fps = (FPSDisplayMode)dataa;
 	} else if (cmdd == 5) {
-		if (dataa == 0) dataa = game.playercharacter;
-		if (game.chars[dataa].walking < 1) {
+		if (dataa == 0) dataa = _GP(game).playercharacter;
+		if (_GP(game).chars[dataa].walking < 1) {
 			Display("Not currently moving.");
 			return;
 		}
-		Bitmap *tempw = BitmapHelper::CreateTransparentBitmap(thisroom.WalkAreaMask->GetWidth(), thisroom.WalkAreaMask->GetHeight());
-		int mlsnum = game.chars[dataa].walking;
-		if (game.chars[dataa].walking >= TURNING_AROUND)
+		Bitmap *tempw = BitmapHelper::CreateTransparentBitmap(_GP(thisroom).WalkAreaMask->GetWidth(), _GP(thisroom).WalkAreaMask->GetHeight());
+		int mlsnum = _GP(game).chars[dataa].walking;
+		if (_GP(game).chars[dataa].walking >= TURNING_AROUND)
 			mlsnum %= TURNING_AROUND;
-		MoveList *cmls = &mls[mlsnum];
+		MoveList *cmls = &_G(mls)[mlsnum];
 		for (int i = 0; i < cmls->numstage - 1; i++) {
 			short srcx = short((cmls->pos[i] >> 16) & 0x00ffff);
 			short srcy = short(cmls->pos[i] & 0x00ffff);
@@ -169,10 +169,10 @@ void script_debug(int cmdd, int dataa) {
 		// TODO: support multiple viewports?!
 		const int viewport_index = 0;
 		const int camera_index = 0;
-		const Rect &viewport = play.GetRoomViewport(viewport_index)->GetRect();
-		const Rect &camera = play.GetRoomCamera(camera_index)->GetRect();
+		const Rect &viewport = _GP(play).GetRoomViewport(viewport_index)->GetRect();
+		const Rect &camera = _GP(play).GetRoomCamera(camera_index)->GetRect();
 		Bitmap *view_bmp = BitmapHelper::CreateBitmap(viewport.GetWidth(), viewport.GetHeight());
-		Rect mask_src = Rect(camera.Left / thisroom.MaskResolution, camera.Top / thisroom.MaskResolution, camera.Right / thisroom.MaskResolution, camera.Bottom / thisroom.MaskResolution);
+		Rect mask_src = Rect(camera.Left / _GP(thisroom).MaskResolution, camera.Top / _GP(thisroom).MaskResolution, camera.Right / _GP(thisroom).MaskResolution, camera.Bottom / _GP(thisroom).MaskResolution);
 		view_bmp->StretchBlt(tempw, mask_src, RectWH(0, 0, viewport.GetWidth(), viewport.GetHeight()), Shared::kBitmap_Transparency);
 
 		IDriverDependantBitmap *ddb = gfxDriver->CreateDDBFromBitmap(view_bmp, false, true);

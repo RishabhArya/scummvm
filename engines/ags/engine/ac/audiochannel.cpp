@@ -28,25 +28,26 @@
 #include "ags/shared/game/roomstruct.h"
 #include "ags/engine/script/runtimescriptvalue.h"
 #include "ags/engine/media/audio/audio_system.h"
-
 #include "ags/shared/debugging/out.h"
+#include "ags/shared/game/roomstruct.h"
 #include "ags/engine/script/script_api.h"
 #include "ags/engine/script/script_runtime.h"
+#include "ags/globals.h"
 
 namespace AGS3 {
 
 using namespace AGS::Shared;
 
-extern GameState play;
-extern RoomStruct thisroom;
-extern CCAudioClip ccDynamicAudioClip;
+
+
+
 
 int AudioChannel_GetID(ScriptAudioChannel *channel) {
 	return channel->id;
 }
 
 int AudioChannel_GetIsPlaying(ScriptAudioChannel *channel) {
-	if (play.fast_forward) {
+	if (_GP(play).fast_forward) {
 		return 0;
 	}
 
@@ -91,7 +92,7 @@ int AudioChannel_GetPosition(ScriptAudioChannel *channel) {
 	auto *ch = lock.GetChannelIfPlaying(channel->id);
 
 	if (ch) {
-		if (play.fast_forward)
+		if (_GP(play).fast_forward)
 			return 999999999;
 
 		return ch->get_pos();
@@ -104,7 +105,7 @@ int AudioChannel_GetPositionMs(ScriptAudioChannel *channel) {
 	auto *ch = lock.GetChannelIfPlaying(channel->id);
 
 	if (ch) {
-		if (play.fast_forward)
+		if (_GP(play).fast_forward)
 			return 999999999;
 
 		return ch->get_pos_ms();
@@ -165,7 +166,7 @@ void AudioChannel_SetSpeed(ScriptAudioChannel *channel, int new_speed) {
 }
 
 void AudioChannel_Stop(ScriptAudioChannel *channel) {
-	if (channel->id == SCHAN_SPEECH && play.IsNonBlockingVoiceSpeech())
+	if (channel->id == SCHAN_SPEECH && _GP(play).IsNonBlockingVoiceSpeech())
 		stop_voice_nonblocking();
 	else
 		stop_or_fade_out_channel(channel->id, -1, nullptr);
@@ -188,7 +189,7 @@ void AudioChannel_SetRoomLocation(ScriptAudioChannel *channel, int xPos, int yPo
 	auto *ch = lock.GetChannelIfPlaying(channel->id);
 
 	if (ch) {
-		int maxDist = ((xPos > thisroom.Width / 2) ? xPos : (thisroom.Width - xPos)) - AMBIENCE_FULL_DIST;
+		int maxDist = ((xPos > _GP(thisroom).Width / 2) ? xPos : (_GP(thisroom).Width - xPos)) - AMBIENCE_FULL_DIST;
 		ch->_xSource = (xPos > 0) ? xPos : -1;
 		ch->_ySource = yPos;
 		ch->_maximumPossibleDistanceAway = maxDist;
@@ -228,7 +229,7 @@ RuntimeScriptValue Sc_AudioChannel_SetPanning(void *self, const RuntimeScriptVal
 
 // ScriptAudioClip* | ScriptAudioChannel *channel
 RuntimeScriptValue Sc_AudioChannel_GetPlayingClip(void *self, const RuntimeScriptValue *params, int32_t param_count) {
-	API_OBJCALL_OBJ(ScriptAudioChannel, ScriptAudioClip, ccDynamicAudioClip, AudioChannel_GetPlayingClip);
+	API_OBJCALL_OBJ(ScriptAudioChannel, ScriptAudioClip, _GP(ccDynamicAudioClip), AudioChannel_GetPlayingClip);
 }
 
 // int | ScriptAudioChannel *channel

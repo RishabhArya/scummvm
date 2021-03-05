@@ -31,18 +31,15 @@
 #include "ags/engine/debugging/debug_log.h"
 #include "ags/engine/gui/animatingguibutton.h"
 #include "ags/shared/gui/guimain.h"
-
 #include "ags/shared/debugging/out.h"
 #include "ags/engine/script/script_api.h"
 #include "ags/engine/script/script_runtime.h"
 #include "ags/engine/ac/dynobj/scriptstring.h"
+#include "ags/globals.h"
 
 namespace AGS3 {
 
 using namespace AGS::Shared;
-
-extern GameSetupStruct game;
-extern ViewStruct *views;
 
 // *** BUTTON FUNCTIONS
 
@@ -53,11 +50,11 @@ void Button_Animate(GUIButton *butt, int view, int loop, int speed, int repeat) 
 	int guin = butt->ParentId;
 	int objn = butt->Id;
 
-	if ((view < 1) || (view > game.numviews))
+	if ((view < 1) || (view > _GP(game).numviews))
 		quit("!AnimateButton: invalid view specified");
 	view--;
 
-	if ((loop < 0) || (loop >= views[view].numLoops))
+	if ((loop < 0) || (loop >= _G(views)[view].numLoops))
 		quit("!AnimateButton: invalid loop specified for view");
 
 	// if it's already animating, stop it
@@ -66,10 +63,10 @@ void Button_Animate(GUIButton *butt, int view, int loop, int speed, int repeat) 
 	if (numAnimButs >= MAX_ANIMATING_BUTTONS)
 		quit("!AnimateButton: too many animating GUI buttons at once");
 
-	int buttonId = guis[guin].GetControlID(objn);
+	int buttonId = _GP(guis)[guin].GetControlID(objn);
 
-	guibuts[buttonId].PushedImage = 0;
-	guibuts[buttonId].MouseOverImage = 0;
+	_GP(guibuts)[buttonId].PushedImage = 0;
+	_GP(guibuts)[buttonId].MouseOverImage = 0;
 
 	animbuts[numAnimButs].ongui = guin;
 	animbuts[numAnimButs].onguibut = objn;
@@ -106,7 +103,7 @@ void Button_SetText(GUIButton *butt, const char *newtx) {
 }
 
 void Button_SetFont(GUIButton *butt, int newFont) {
-	if ((newFont < 0) || (newFont >= game.numfonts))
+	if ((newFont < 0) || (newFont >= _GP(game).numfonts))
 		quit("!Button.Font: invalid font number.");
 
 	if (butt->Font != newFont) {
@@ -163,8 +160,8 @@ void Button_SetNormalGraphic(GUIButton *guil, int slotn) {
 		guil->CurrentImage = slotn;
 	guil->Image = slotn;
 	// update the clickable area to the same size as the graphic
-	guil->Width = game.SpriteInfos[slotn].Width;
-	guil->Height = game.SpriteInfos[slotn].Height;
+	guil->Width = _GP(game).SpriteInfos[slotn].Width;
+	guil->Height = _GP(game).SpriteInfos[slotn].Height;
 
 	guis_need_update = 1;
 	FindAndRemoveButtonAnimation(guil->ParentId, guil->Id);
@@ -207,7 +204,7 @@ int UpdateAnimatingButton(int bu) {
 		animbuts[bu].wait--;
 		return 0;
 	}
-	ViewStruct *tview = &views[animbuts[bu].view];
+	ViewStruct *tview = &_G(views)[animbuts[bu].view];
 
 	animbuts[bu].frame++;
 
@@ -229,10 +226,10 @@ int UpdateAnimatingButton(int bu) {
 	CheckViewFrame(animbuts[bu].view, animbuts[bu].loop, animbuts[bu].frame);
 
 	// update the button's image
-	guibuts[animbuts[bu].buttonid].Image = tview->loops[animbuts[bu].loop].frames[animbuts[bu].frame].pic;
-	guibuts[animbuts[bu].buttonid].CurrentImage = guibuts[animbuts[bu].buttonid].Image;
-	guibuts[animbuts[bu].buttonid].PushedImage = 0;
-	guibuts[animbuts[bu].buttonid].MouseOverImage = 0;
+	_GP(guibuts)[animbuts[bu].buttonid].Image = tview->loops[animbuts[bu].loop].frames[animbuts[bu].frame].pic;
+	_GP(guibuts)[animbuts[bu].buttonid].CurrentImage = _GP(guibuts)[animbuts[bu].buttonid].Image;
+	_GP(guibuts)[animbuts[bu].buttonid].PushedImage = 0;
+	_GP(guibuts)[animbuts[bu].buttonid].MouseOverImage = 0;
 	guis_need_update = 1;
 
 	animbuts[bu].wait = animbuts[bu].speed + tview->loops[animbuts[bu].loop].frames[animbuts[bu].frame].speed;
@@ -306,7 +303,7 @@ void Button_SetTextAlignment(GUIButton *butt, int align) {
 //
 //=============================================================================
 
-extern ScriptString myScriptStringImpl;
+
 
 // void | GUIButton *butt, int view, int loop, int speed, int repeat
 RuntimeScriptValue Sc_Button_Animate(void *self, const RuntimeScriptValue *params, int32_t param_count) {
@@ -315,7 +312,7 @@ RuntimeScriptValue Sc_Button_Animate(void *self, const RuntimeScriptValue *param
 
 // const char* | GUIButton *butt
 RuntimeScriptValue Sc_Button_GetText_New(void *self, const RuntimeScriptValue *params, int32_t param_count) {
-	API_CONST_OBJCALL_OBJ(GUIButton, const char, myScriptStringImpl, Button_GetText_New);
+	API_CONST_OBJCALL_OBJ(GUIButton, const char, _GP(myScriptStringImpl), Button_GetText_New);
 }
 
 // void | GUIButton *butt, char *buffer

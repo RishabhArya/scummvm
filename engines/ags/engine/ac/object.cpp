@@ -45,28 +45,21 @@
 #include "ags/engine/script/runtimescriptvalue.h"
 #include "ags/engine/ac/dynobj/cc_object.h"
 #include "ags/engine/ac/movelist.h"
-
 #include "ags/shared/debugging/out.h"
 #include "ags/engine/script/script_api.h"
 #include "ags/engine/script/script_runtime.h"
 #include "ags/engine/ac/dynobj/scriptstring.h"
+#include "ags/globals.h"
 
 namespace AGS3 {
 
 using namespace AGS::Shared;
 
-
-extern ScriptObject scrObj[MAX_ROOM_OBJECTS];
 extern RoomStatus *croom;
 extern RoomObject *objs;
-extern ViewStruct *views;
-extern RoomStruct thisroom;
-extern ObjectCache objcache[MAX_ROOM_OBJECTS];
-extern MoveList *mls;
-extern GameSetupStruct game;
+
 extern Bitmap *walkable_areas_temp;
 extern IGraphicsDriver *gfxDriver;
-extern CCObject ccDynamicObject;
 
 
 int Object_IsCollidingWithObject(ScriptObject *objj, ScriptObject *obj2) {
@@ -77,14 +70,14 @@ ScriptObject *GetObjectAtScreen(int xx, int yy) {
 	int hsnum = GetObjectIDAtScreen(xx, yy);
 	if (hsnum < 0)
 		return nullptr;
-	return &scrObj[hsnum];
+	return &_G(scrObj)[hsnum];
 }
 
 ScriptObject *GetObjectAtRoom(int x, int y) {
 	int hsnum = GetObjectIDAtRoom(x, y);
 	if (hsnum < 0)
 		return nullptr;
-	return &scrObj[hsnum];
+	return &_G(scrObj)[hsnum];
 }
 
 AGS_INLINE int is_valid_object(int obtest) {
@@ -101,15 +94,15 @@ void Object_RemoveTint(ScriptObject *objj) {
 }
 
 void Object_SetView(ScriptObject *objj, int view, int loop, int frame) {
-	if (game.options[OPT_BASESCRIPTAPI] < kScriptAPI_v351) {
+	if (_GP(game).options[OPT_BASESCRIPTAPI] < kScriptAPI_v351) {
 		// Previous version of SetView had negative loop and frame mean "use latest values"
 		auto &obj = objs[objj->id];
 		if (loop < 0) loop = obj.loop;
 		if (frame < 0) frame = obj.frame;
 		const int vidx = view - 1;
-		if (vidx < 0 || vidx >= game.numviews) quit("!Object_SetView: invalid view number used");
-		loop = Math::Clamp(loop, 0, (int)views[vidx].numLoops - 1);
-		frame = Math::Clamp(frame, 0, (int)views[vidx].loops[loop].numFrames - 1);
+		if (vidx < 0 || vidx >= _GP(game).numviews) quit("!Object_SetView: invalid view number used");
+		loop = Math::Clamp(loop, 0, (int)_G(views)[vidx].numLoops - 1);
+		frame = Math::Clamp(frame, 0, (int)_G(views)[vidx].loops[loop].numFrames - 1);
 	}
 	SetObjectFrame(objj->id, view, loop, frame);
 }
@@ -293,15 +286,15 @@ const char *Object_GetName_New(ScriptObject *objj) {
 	if (!is_valid_object(objj->id))
 		quit("!Object.Name: invalid object number");
 
-	return CreateNewScriptString(get_translation(thisroom.Objects[objj->id].Name));
+	return CreateNewScriptString(get_translation(_GP(thisroom).Objects[objj->id].Name));
 }
 
 bool Object_IsInteractionAvailable(ScriptObject *oobj, int mood) {
 
-	play.check_interaction_only = 1;
+	_GP(play).check_interaction_only = 1;
 	RunObjectInteraction(oobj->id, mood);
-	int ciwas = play.check_interaction_only;
-	play.check_interaction_only = 0;
+	int ciwas = _GP(play).check_interaction_only;
+	_GP(play).check_interaction_only = 0;
 	return (ciwas == 2);
 }
 
@@ -338,7 +331,7 @@ void Object_SetManualScaling(ScriptObject *objj, bool on) {
 	if (on) objs[objj->id].flags &= ~OBJF_USEROOMSCALING;
 	else objs[objj->id].flags |= OBJF_USEROOMSCALING;
 	// clear the cache
-	objcache[objj->id].ywas = -9999;
+	_G(objcache)[objj->id].ywas = -9999;
 }
 
 void Object_SetIgnoreScaling(ScriptObject *objj, int newval) {
@@ -440,11 +433,11 @@ void move_object(int objj, int tox, int toy, int spee, int ignwal) {
 	set_route_move_speed(spee, spee);
 	set_color_depth(8);
 	int mslot = find_route(objX, objY, tox, toy, prepare_walkable_areas(-1), objj + 1, 1, ignwal);
-	set_color_depth(game.GetColorDepth());
+	set_color_depth(_GP(game).GetColorDepth());
 	if (mslot > 0) {
 		objs[objj].moving = mslot;
-		mls[mslot].direct = ignwal;
-		convert_move_path_to_room_resolution(&mls[mslot]);
+		_G(mls)[mslot].direct = ignwal;
+		convert_move_path_to_room_resolution(&_G(mls)[mslot]);
 	}
 }
 
@@ -461,7 +454,7 @@ void Object_GetPropertyText(ScriptObject *objj, const char *property, char *bufe
 }
 
 const char *Object_GetTextProperty(ScriptObject *objj, const char *property) {
-	return get_text_property_dynamic_string(thisroom.Objects[objj->id].Properties, croom->objProps[objj->id], property);
+	return get_text_property_dynamic_string(_GP(thisroom).Objects[objj->id].Properties, croom->objProps[objj->id], property);
 }
 
 bool Object_SetProperty(ScriptObject *objj, const char *property, int value) {
@@ -521,7 +514,7 @@ int is_pos_in_sprite(int xx, int yy, int arx, int ary, Bitmap *sprit, int spww, 
 	if (isposinbox(xx, yy, arx, ary, arx + spww, ary + sphh) == FALSE)
 		return FALSE;
 
-	if (game.options[OPT_PIXPERFECT]) {
+	if (_GP(game).options[OPT_PIXPERFECT]) {
 		// if it's transparent, or off the edge of the sprite, ignore
 		int xpos = data_to_game_coord(xx - arx);
 		int ypos = data_to_game_coord(yy - ary);
@@ -563,7 +556,7 @@ int check_click_on_object(int roomx, int roomy, int mood) {
 //
 //=============================================================================
 
-extern ScriptString myScriptStringImpl;
+
 
 // void (ScriptObject *objj, int loop, int delay, int repeat, int blocking, int direction)
 RuntimeScriptValue Sc_Object_Animate(void *self, const RuntimeScriptValue *params, int32_t param_count) {
@@ -596,7 +589,7 @@ RuntimeScriptValue Sc_Object_GetPropertyText(void *self, const RuntimeScriptValu
 
 //const char* (ScriptObject *objj, const char *property)
 RuntimeScriptValue Sc_Object_GetTextProperty(void *self, const RuntimeScriptValue *params, int32_t param_count) {
-	API_CONST_OBJCALL_OBJ_POBJ(ScriptObject, const char, myScriptStringImpl, Object_GetTextProperty, const char);
+	API_CONST_OBJCALL_OBJ_POBJ(ScriptObject, const char, _GP(myScriptStringImpl), Object_GetTextProperty, const char);
 }
 
 RuntimeScriptValue Sc_Object_SetProperty(void *self, const RuntimeScriptValue *params, int32_t param_count) {
@@ -693,12 +686,12 @@ RuntimeScriptValue Sc_Object_Tint(void *self, const RuntimeScriptValue *params, 
 }
 
 RuntimeScriptValue Sc_GetObjectAtRoom(const RuntimeScriptValue *params, int32_t param_count) {
-	API_SCALL_OBJ_PINT2(ScriptObject, ccDynamicObject, GetObjectAtRoom);
+	API_SCALL_OBJ_PINT2(ScriptObject, _GP(ccDynamicObject), GetObjectAtRoom);
 }
 
 // ScriptObject *(int xx, int yy)
 RuntimeScriptValue Sc_GetObjectAtScreen(const RuntimeScriptValue *params, int32_t param_count) {
-	API_SCALL_OBJ_PINT2(ScriptObject, ccDynamicObject, GetObjectAtScreen);
+	API_SCALL_OBJ_PINT2(ScriptObject, _GP(ccDynamicObject), GetObjectAtScreen);
 }
 
 // int (ScriptObject *objj)
@@ -802,7 +795,7 @@ RuntimeScriptValue Sc_Object_GetMoving(void *self, const RuntimeScriptValue *par
 
 // const char* (ScriptObject *objj)
 RuntimeScriptValue Sc_Object_GetName_New(void *self, const RuntimeScriptValue *params, int32_t param_count) {
-	API_CONST_OBJCALL_OBJ(ScriptObject, const char, myScriptStringImpl, Object_GetName_New);
+	API_CONST_OBJCALL_OBJ(ScriptObject, const char, _GP(myScriptStringImpl), Object_GetName_New);
 }
 
 RuntimeScriptValue Sc_Object_GetScaling(void *self, const RuntimeScriptValue *params, int32_t param_count) {

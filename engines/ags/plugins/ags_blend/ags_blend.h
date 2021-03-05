@@ -44,23 +44,23 @@ private:
 	/**
 	 * Gets the alpha value at coords x,y
 	 */
-	static int GetAlpha(int sprite, int x, int y);
+	static void GetAlpha(ScriptMethodParams &params);
 
 	/**
 	 * Sets the alpha value at coords x,y
 	 */
-	static int PutAlpha(int sprite, int x, int y, int alpha);
+	static void PutAlpha(ScriptMethodParams &params);
 
 	/**
 	 * Translates index from a 2D array to a 1D array
 	 */
 	static int xytolocale(int x, int y, int width);
 
-	static int HighPass(int sprite, int threshold);
-	static int Blur(int sprite, int radius);
-	static int DrawSprite(int destination, int sprite, int x, int y, int DrawMode, int trans);
-	static int DrawAdd(int destination, int sprite, int x, int y, float scale);
-	static int DrawAlpha(int destination, int sprite, int x, int y, int trans);
+	static void HighPass(ScriptMethodParams &params);
+	static void Blur(ScriptMethodParams &params);
+	static void DrawSprite(ScriptMethodParams &params);
+	static void DrawAdd(ScriptMethodParams &params);
+	static void DrawAlpha(ScriptMethodParams &params);
 
 public:
 	AGSBlend();

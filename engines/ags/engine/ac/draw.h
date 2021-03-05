@@ -44,7 +44,7 @@ class IDriverDependantBitmap;
 
 using namespace AGS; // FIXME later
 
-#define IS_ANTIALIAS_SPRITES usetup.enable_antialiasing && (play.disable_antialiasing == 0)
+#define IS_ANTIALIAS_SPRITES usetup.enable_antialiasing && (_GP(play).disable_antialiasing == 0)
 
 // [IKM] WARNING: these definitions has to be made AFTER Allegro headers
 // were included, because they override few Allegro function names;
@@ -63,6 +63,22 @@ struct CachedActSpsData {
 	int isWalkBehindHere;
 	int valid;
 };
+
+/**
+ * Buffer and info flags for viewport/camera pairs rendering in software mode
+ */
+struct RoomCameraDrawData {
+	// Intermediate bitmap for the software drawing method.
+	// We use this bitmap in case room camera has scaling enabled, we draw dirty room rects on it,
+	// and then pass to software renderer which draws sprite on top and then either blits or stretch-blits
+	// to the virtual screen.
+	// For more details see comment in ALSoftwareGraphicsDriver::RenderToBackBuffer().
+	AGS::Shared::PBitmap Buffer;      // this is the actual bitmap
+	AGS::Shared::PBitmap Frame;       // this is either same bitmap reference or sub-bitmap of virtual screen
+	bool    IsOffscreen = false; // whether room viewport was offscreen (cannot use sub-bitmap)
+	bool    IsOverlap = false;   // whether room viewport overlaps any others (marking dirty rects is complicated)
+};
+
 
 // Converts AGS color index to the actual bitmap color using game's color depth
 int MakeColor(int color_index);

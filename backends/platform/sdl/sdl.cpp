@@ -183,6 +183,9 @@ bool OSystem_SDL::hasFeature(Feature f) {
 #if SDL_VERSION_ATLEAST(2, 0, 0)
 	if (f == kFeatureClipboardSupport) return true;
 #endif
+#if SDL_VERSION_ATLEAST(2, 0, 14)
+	if (f == kFeatureOpenUrl) return true;
+#endif
 	if (f == kFeatureJoystickDeadzone || f == kFeatureKbdMouseSpeed) {
 		return _eventSource->isJoystickConnected();
 	}
@@ -563,7 +566,7 @@ Common::String OSystem_SDL::getSystemLanguage() const {
 
 	// Restore default C locale to prevent issues with
 	// portability of sscanf(), atof(), etc.
-	// See bug #3615148
+	// See bug #6434
 	setlocale(LC_ALL, "C");
 
 	// Detect the language from the locale
@@ -611,6 +614,17 @@ bool OSystem_SDL::setTextInClipboard(const Common::U32String &text) {
 	// The encoding we need to use is UTF-8.
 	Common::String utf8Text = text.encode();
 	return SDL_SetClipboardText(utf8Text.c_str()) == 0;
+}
+#endif
+
+#if SDL_VERSION_ATLEAST(2, 0, 14)
+bool OSystem_SDL::openUrl(const Common::String &url) {
+	if (SDL_OpenURL(url.c_str()) != 0) {
+		warning("Failed to open URL: %s", SDL_GetError());
+		return false;
+	}
+
+	return true;
 }
 #endif
 
@@ -730,7 +744,7 @@ bool OSystem_SDL::setGraphicsMode(int mode, uint flags) {
 		// Very hacky way to set up the old graphics manager state, in case we
 		// switch from SDL->OpenGL or OpenGL->SDL.
 		//
-		// This is a probably temporary workaround to fix bugs like #3368143
+		// This is a probably temporary workaround to fix bugs like #5799
 		// "SDL/OpenGL: Crash when switching renderer backend".
 		//
 		// It's also used to restore state from 3D to 2D GFX manager
